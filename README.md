@@ -37,14 +37,14 @@ opinionated to the way we operate in my workplace, however, I will be working to
 To start using this package, install it through NuGet package manager or CLI as shown below:
 
 Through your NuGet package manager:
-- Search for "telepresence-dotnet" and click on install.
+- Search for "Telepresence.NET" and click on install.
 
 or
 
 Through .NET CLI:
 - Run the following command:
     ```
-    dotnet add package telepresence-dotnet 
+    dotnet add package Telepresence.NET 
     ```
 
 ## Usage
