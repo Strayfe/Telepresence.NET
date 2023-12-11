@@ -1,0 +1,27 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{4F444960-BE9A-4F54-9926-490B7955F762}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{BD1FD52F-3745-400B-AF61-8ACE11B0CC5A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{C1FD68D5-5CF8-4239-B84B-D8853E4304A5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{419A08AA-625F-4EAE-9767-2A931E2FA268}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Telepresence.NET", "src\Telepresence.NET\Telepresence.NET.csproj", "{75A88C95-FF0A-4B18-A102-A606B8E10645}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{75A88C95-FF0A-4B18-A102-A606B8E10645} = {4F444960-BE9A-4F54-9926-490B7955F762}
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{75A88C95-FF0A-4B18-A102-A606B8E10645}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{75A88C95-FF0A-4B18-A102-A606B8E10645}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{75A88C95-FF0A-4B18-A102-A606B8E10645}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{75A88C95-FF0A-4B18-A102-A606B8E10645}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
