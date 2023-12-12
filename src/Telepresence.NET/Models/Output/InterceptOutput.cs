@@ -13,4 +13,6 @@ public class InterceptOutput
     // strange object, looks like a directory but behaves like an object, not really c# friendly without reflection so skip for now
     // [JsonProperty("bindMounts")]
     // public object? BindMounts { get; set; }
+    
+    [JsonProperty("environment")] public IDictionary<string, string>? Environment { get; set; }
 }

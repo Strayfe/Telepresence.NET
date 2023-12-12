@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace Telepresence.NET.Models.Intercept;
@@ -8,56 +7,40 @@ namespace Telepresence.NET.Models.Intercept;
 /// </summary>
 public class Workload
 {
-    private readonly string? _name;
-    private readonly IEnumerable<WorkloadIntercept>? _intercepts;
+    private string? _name;
+    private IEnumerable<WorkloadIntercept>? _intercepts;
 
+    /// <summary>
+    /// An intercepted workload (Deployment, ReplicaSet or StatefulSet), keyed by name.
+    /// </summary>
     public Workload()
     {
-        _name = Assembly
-            .GetEntryAssembly()?
-            .GetName()
-            .Name?
-            .Replace('.', '-')
-            .Replace('_', '-')
-            .ToLowerInvariant();
     }
 
+    /// <summary>
+    /// An intercepted workload (Deployment, ReplicaSet or StatefulSet), keyed by name.
+    /// </summary>
     public Workload(string name) => Name = name;
 
     /// <summary>
     /// The name of the workload.
-    /// Defaults to the normalized name of the current project.
+    /// Defaults to the normalized assembly name.
     /// </summary>
     public string? Name
     {
-        get
-        {
-            if (string.IsNullOrWhiteSpace(_name))
-                throw new ArgumentNullException(nameof(Name));
-
-            return _name;
-        }
+        get => _name ??= Defaults.Name;
         init
         {
             if (string.IsNullOrWhiteSpace(value))
-            {
-                value = Assembly
-                    .GetEntryAssembly()?
-                    .GetName()
-                    .Name?
-                    .Replace('.', '-')
-                    .Replace('_', '-')
-                    .ToLowerInvariant() ?? 
-                        throw new InvalidOperationException(Constants.Exceptions.CantDetermineName);
-            }
+                throw new ArgumentNullException(nameof(Name));
 
             if (value.Length > 64)
-                throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
+                throw new InvalidOperationException(Exceptions.CantExceed64Characters);
             
             const string pattern = "^[a-z][a-z0-9-]*$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
 
             _name = value;
         }
@@ -68,14 +51,20 @@ public class Workload
     /// </summary>
     public IEnumerable<WorkloadIntercept>? Intercepts
     {
-        get => _intercepts;
+        get => _intercepts ??= new WorkloadIntercept[]
+        {
+            new() { Name = _name }
+        };
         init
         {
             if (value == null)
+            {
+                _intercepts = value;
                 return;
+            }
 
             if (!value.Any() || value.Count() > 16)
-                throw new InvalidOperationException(Constants.Exceptions.InvalidNumberOfInterceptsDefined);
+                throw new InvalidOperationException(Exceptions.InvalidNumberOfInterceptsDefined);
 
             _intercepts = value;
         }

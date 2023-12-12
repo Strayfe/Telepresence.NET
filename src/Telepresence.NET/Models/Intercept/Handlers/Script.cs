@@ -19,7 +19,7 @@ public class Script
         init
         {
             if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentNullException(nameof(value));
+                throw new ArgumentNullException(nameof(Run));
 
             _run = value;
         }

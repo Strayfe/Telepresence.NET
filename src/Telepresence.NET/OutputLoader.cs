@@ -46,17 +46,28 @@ public static class OutputLoader
     private static void ProcessJson(string filePath)
     {
         var json = File.ReadAllText(filePath);
-        var interceptSpecification = JsonConvert.DeserializeObject<InterceptOutput>(json);
+        var interceptOutput = JsonConvert.DeserializeObject<InterceptOutput>(json);
+
+        if (interceptOutput == null)
+            return;
         
-        var intercept = interceptSpecification?
+        // get environment from individual intercepts (limited to first for now)
+        var intercept = interceptOutput
             .Intercepts?
             .FirstOrDefault(x => string.Equals(x.Name, InterceptName, StringComparison.OrdinalIgnoreCase));
 
-        if (intercept?.Environment == null)
-            return;
+        if (intercept is { Environment: not null } && intercept.Environment.Any())
+        {
+            foreach (var environment in intercept.Environment)
+                Environment.SetEnvironmentVariable(environment.Key, environment.Value);
+        }
 
-        foreach (var environment in intercept.Environment)
-            Environment.SetEnvironmentVariable(environment.Key, environment.Value);
+        // apply environment overrides applied directly to intercept specification
+        if (interceptOutput.Environment == null || !interceptOutput.Environment.Any())
+            return;
+        
+        foreach (var environment in interceptOutput.Environment)
+                Environment.SetEnvironmentVariable(environment.Key, environment.Value);
     }
 
     private static void ProcessYaml(string filePath)

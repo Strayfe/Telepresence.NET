@@ -1,99 +1,55 @@
 ﻿using System.Diagnostics;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using Telepresence.NET.Converters;
 using Telepresence.NET.Models.Intercept;
-using Telepresence.NET.Models.Intercept.Handlers;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
 namespace Telepresence.NET;
 
+/// <summary>
+/// An intercept specification and processes to control intercepting workloads in a kubernetes cluster.
+/// </summary>
 public class Intercept
 {
-    private readonly string _temporaryDirectory;
-    private readonly string _interceptOutputPath;
-    private readonly string _interceptSpecificationPath;
-    
-    private readonly string _name;
+    private string? _temporaryDirectory;
+    private string? _interceptSpecificationPath;
+    private bool _isConnected;
+    private string? _name;
     // todo: private IEnumerable<Prerequisites> _prerequisites;
     private readonly Connection? _connection;
-    private readonly IEnumerable<Workload>? _workloads;
-    private readonly IEnumerable<Handler>? _handlers;
+    private IEnumerable<Workload>? _workloads;
+    private IEnumerable<Handler>? _handlers;
     
     private Process? _interceptProcess;
 
+    /// <summary>
+    /// An intercept specification and processes to control intercepting workloads in a kubernetes cluster.
+    /// </summary>
     public Intercept()
     {
-        _name = Assembly
-            .GetEntryAssembly()?
-            .GetName()
-            .Name?
-            .Replace('.', '-')
-            .Replace('_', '-')
-            .ToLowerInvariant() ?? 
-                throw new InvalidOperationException(Constants.Exceptions.CantDetermineName);
-        
-        _temporaryDirectory = Path.Combine(Path.GetTempPath(), nameof(Telepresence).ToLowerInvariant(), _name);
-        _interceptOutputPath = Path.Combine(_temporaryDirectory, $"{_name}-output.json");
-        _interceptSpecificationPath = Path.Combine(_temporaryDirectory, $"{_name}-intercept-specification.yaml");
-        
-        if (!Directory.Exists(_temporaryDirectory))
-            Directory.CreateDirectory(_temporaryDirectory);
-
-        _workloads = new List<Workload>
-        {
-            new()
-            {
-                Name = _name,
-                Intercepts = new List<WorkloadIntercept>
-                {
-                    new()
-                    {
-                        Name = _name,
-                        Handler = _name,
-                        Service = _name
-                    }
-                }
-            }
-        };
-
-        _handlers = new List<Handler>
-        {
-            new()
-            {
-                Name = _name,
-                External = new External
-                {
-                    IsDocker = false,
-                    OutputFormat = OutputFormat.Json,
-                    OutputPath = _interceptOutputPath
-                }
-            }
-        };
     }
+
+    /// <summary>
+    /// An intercept specification and processes to control intercepting workloads in a kubernetes cluster.
+    /// </summary>
+    public Intercept(string name) => Name = name;
 
     /// <summary>
     /// A name to give to the specification.
     /// </summary>
     public string Name
     {
-        get
-        {
-            if (string.IsNullOrWhiteSpace(_name))
-                throw new ArgumentNullException(nameof(Name));
-            
-            return _name;
-        }
+        get => _name ??= Defaults.Name;
         init
         {
             if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentNullException(nameof(value));
+                throw new ArgumentNullException(nameof(Name));
 
             const string pattern = "^[a-zA-Z][a-zA-Z0-9_-]*$";
             
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
 
             _name = value;
         }
@@ -105,7 +61,7 @@ public class Intercept
     public Connection? Connection
     {
         get => _connection;
-        init => _connection = value ?? throw new ArgumentNullException(nameof(value));
+        init => _connection = value ?? throw new ArgumentNullException(nameof(Connection));
     }
     
     /// <summary>
@@ -113,14 +69,17 @@ public class Intercept
     /// </summary>
     public IEnumerable<Workload>? Workloads
     {
-        get => _workloads;
+        get => _workloads ??= new Workload[]
+        {
+            new() { Name = _name }
+        };
         init
         {
             if (value == null)
-                throw new ArgumentNullException(nameof(value));
+                throw new ArgumentNullException(nameof(Workloads));
 
             if (!value.Any() || value.Count() > 32)
-                throw new InvalidOperationException(Constants.Exceptions.InvalidNumberOfWorkloadsDefined);
+                throw new InvalidOperationException(Exceptions.InvalidNumberOfWorkloadsDefined);
 
             _workloads = value;
         }
@@ -131,14 +90,17 @@ public class Intercept
     /// </summary>
     public IEnumerable<Handler>? Handlers
     {
-        get => _handlers;
+        get => _handlers ??= new Handler[]
+        {
+            new() { Name = _name }
+        };
         init
         {
             if (value == null)
-                throw new ArgumentNullException(nameof(value));
-            
+                throw new ArgumentNullException(nameof(Handlers));
+
             if (!value.Any() || value.Count() > 64)
-                throw new InvalidOperationException(Constants.Exceptions.InvalidNumberOfHandlersDefined);
+                throw new InvalidOperationException(Exceptions.InvalidNumberOfHandlersDefined);
             
             // assert that each handler has at least one handler
             foreach (var handler in value)
@@ -150,7 +112,7 @@ public class Intercept
                 var mutuallyExclusive = isDocker ^ isScript ^ isExternal;
                 
                 if (!mutuallyExclusive)
-                    throw new InvalidOperationException(Constants.Exceptions.MutuallyExclusiveHandlers);
+                    throw new InvalidOperationException(Exceptions.MutuallyExclusiveHandlers);
             }
             
             _handlers = value;
@@ -163,13 +125,12 @@ public class Intercept
     /// </summary>
     public async Task Connect()
     {
-        // todo: skip if connect already called by the user
-        // if (_connected)
-        //     return;
+        if (_isConnected)
+            return;
         
         LogToConsole("Attempting to connect to cluster");
         
-        if (_connection == null)
+        if (Connection == null)
             LogToConsole("Connection not defined, will try to determine from context");
         
         try
@@ -191,16 +152,16 @@ public class Intercept
                 }
             };
 
-            if (_connection != null && !string.IsNullOrWhiteSpace(_connection.Context))
+            if (Connection != null && !string.IsNullOrWhiteSpace(Connection.Context))
             {
                 connectProcess.StartInfo.ArgumentList.Add("--context");
-                connectProcess.StartInfo.ArgumentList.Add(_connection.Context);
+                connectProcess.StartInfo.ArgumentList.Add(Connection.Context);
             }
             
-            if (_connection != null && !string.IsNullOrWhiteSpace(_connection.Namespace))
+            if (Connection != null && !string.IsNullOrWhiteSpace(Connection.Namespace))
             {
                 connectProcess.StartInfo.ArgumentList.Add("--namespace");
-                connectProcess.StartInfo.ArgumentList.Add(_connection.Namespace);
+                connectProcess.StartInfo.ArgumentList.Add(Connection.Namespace);
             }
             
             connectProcess.OutputDataReceived += (sender, args) =>
@@ -213,6 +174,7 @@ public class Intercept
                 
                 LogToConsole("Already connected");
             };
+            
             connectProcess.ErrorDataReceived += (sender, args) =>
             {
                 if (!string.IsNullOrWhiteSpace(args.Data))
@@ -225,6 +187,8 @@ public class Intercept
             connectProcess.BeginErrorReadLine();
             
             await connectProcess.WaitForExitAsync();
+
+            _isConnected = true;
         }
         catch (Exception ex)
         {
@@ -241,10 +205,9 @@ public class Intercept
         
         await Connect();
         await Leave();
+        await CreateInterceptSpecification();
         
-        await File.WriteAllTextAsync(_interceptSpecificationPath, this.ToString());
-        
-        LogToConsole($"Starting intercept: {_name}");
+        LogToConsole($"Starting intercept: {Name}");
 
         try
         {
@@ -283,46 +246,56 @@ public class Intercept
             
             _interceptProcess.BeginOutputReadLine();
             _interceptProcess.BeginErrorReadLine();
-
-            var cancellationTokenSource = new CancellationTokenSource();
-            cancellationTokenSource.CancelAfter((int)timeout.Value.TotalMilliseconds);
-            await WaitForOutputFile(cancellationTokenSource.Token);
-
-            // if the file doesn't exist after (n) seconds then the intercept clearly didn't work, so just exit here
-            if (!File.Exists(_interceptOutputPath))
-            {
-                await Leave();
-                throw new InvalidOperationException(Constants.Exceptions.UnableToStartIntercept);
-            }
-
-            OutputLoader.LoadEnvironment(_interceptOutputPath);
-
+            
             // known limitation: only works with first of collection for now
-            var workload = _workloads?.FirstOrDefault();
+            var workload = Workloads?.FirstOrDefault();
             if (workload == null)
-                throw new InvalidOperationException(Constants.Exceptions.NoWorkloadFound);
+                throw new InvalidOperationException(Exceptions.NoWorkloadFound);
 
             var intercept = workload.Intercepts?.FirstOrDefault();
             if (intercept == null)
-                throw new InvalidOperationException(Constants.Exceptions.NoWorkloadInterceptFound);
-            
-            // explicitly set the port for Kestrel to listen on because this may have come back from the cluster
-            // todo: account for tls
-            Environment.SetEnvironmentVariable("DOTNET_URLS", $"http://+:{intercept.LocalPort}");
-            Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://+:{intercept.LocalPort}");
-            Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+                throw new InvalidOperationException(Exceptions.NoWorkloadInterceptFound);
 
-            LogToConsole($"Intercept started: {_name}");
+            var handler = Handlers?.FirstOrDefault();
+            if (handler == null)
+                throw new InvalidOperationException(Exceptions.NoHandlerFound);
+
+            // todo: implement a strategy pattern for doing this as part of the handlers implementation
+            // if (handler is External)
+            if (handler.External != null)
+            {
+                var cancellationTokenSource = new CancellationTokenSource();
+                cancellationTokenSource.CancelAfter((int)timeout.Value.TotalMilliseconds);
+
+                if (string.IsNullOrWhiteSpace(handler.External.OutputPath))
+                    return;
+                
+                await WaitForOutputFile(handler.External.OutputPath, cancellationTokenSource.Token);
+    
+                // if the file doesn't exist after (n) seconds then the intercept clearly didn't work, so just exit here
+                if (!File.Exists(handler.External.OutputPath))
+                {
+                    await Leave();
+                    throw new InvalidOperationException(Exceptions.UnableToStartIntercept);
+                }
+    
+                OutputLoader.LoadEnvironment(handler.External.OutputPath);
+                
+                // explicitly set the port for Kestrel to listen on because this may have come back from the cluster
+                // todo: account for tls
+                Environment.SetEnvironmentVariable("DOTNET_URLS", $"http://+:{intercept.LocalPort}");
+                Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://+:{intercept.LocalPort}");
+                
+                if (File.Exists(handler.External.OutputPath))
+                    File.Delete(handler.External.OutputPath);
+            }
+            
+            LogToConsole($"Intercept started: {Name}");
         }
         catch (Exception ex)
         {
             LogToConsole($"Error starting intercept: {ex}");
             throw;
-        }
-        finally
-        {
-            DeleteOutputFile();
         }
     }
 
@@ -331,7 +304,7 @@ public class Intercept
     /// </summary>
     public async Task Leave()
     {
-        LogToConsole($"Attempting to leave previous intercept: {_name}");
+        LogToConsole($"Attempting to leave previous intercept: {Name}");
 
         try
         {
@@ -343,7 +316,7 @@ public class Intercept
                     ArgumentList =
                     {
                         "leave",
-                        $"{_name}"
+                        $"{Name}"
                     },
                     WorkingDirectory = Environment.CurrentDirectory,
                     RedirectStandardOutput = true,
@@ -382,10 +355,6 @@ public class Intercept
         {
             LogToConsole($"Couldn't leave intercept: {ex}");
         }
-        finally
-        {
-            DeleteOutputFile();
-        }
     }
 
     /// <summary>
@@ -405,6 +374,10 @@ public class Intercept
             Directory.Delete(_temporaryDirectory, true);
     }
     
+    /// <summary>
+    /// Parse the intercept specification as YAML.
+    /// Falls back to the name of the object in event of failure.
+    /// </summary>
     public override string? ToString()
     {
         var result = base.ToString();
@@ -427,13 +400,22 @@ public class Intercept
         return result;
     }
 
-    private void DeleteOutputFile()
-    {
-        if (File.Exists(_interceptOutputPath))
-            File.Delete(_interceptOutputPath);
-    }
+    // todo: temporary - use proper logging
+    private static void LogToConsole(string log) => Console.WriteLine($"[telepresence]: {log}");
 
-    private async Task WaitForOutputFile(CancellationToken cancellationToken)
+    private Task CreateInterceptSpecification()
+    {
+        _temporaryDirectory = Path.Combine(Path.GetTempPath(), nameof(Telepresence).ToLowerInvariant(), Name);
+        _interceptSpecificationPath = Path.Combine(_temporaryDirectory, $"{Name}-intercept-specification.yaml");
+        
+        if (!Directory.Exists(_temporaryDirectory))
+            Directory.CreateDirectory(_temporaryDirectory);
+        
+        return File.WriteAllTextAsync(_interceptSpecificationPath, ToString());
+    }
+    
+    // todo: move into external handler strategy
+    private async Task WaitForOutputFile(string outputPath, CancellationToken cancellationToken = default)
     {
         LogToConsole("Waiting for output file");
 
@@ -441,7 +423,7 @@ public class Intercept
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                if (File.Exists(_interceptOutputPath))
+                if (File.Exists(outputPath))
                     return;
 
                 await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
@@ -461,7 +443,4 @@ public class Intercept
             throw;
         }
     }
-
-    // todo: temporary - use proper logging
-    private static void LogToConsole(string log) => Console.WriteLine($"[telepresence]: {log}");
 }

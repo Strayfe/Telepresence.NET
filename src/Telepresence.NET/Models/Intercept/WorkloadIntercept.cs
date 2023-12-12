@@ -1,6 +1,6 @@
 using System.Net.NetworkInformation;
-using System.Reflection;
 using System.Text.RegularExpressions;
+using YamlDotNet.Serialization;
 
 namespace Telepresence.NET.Models.Intercept;
 
@@ -9,39 +9,26 @@ namespace Telepresence.NET.Models.Intercept;
 /// </summary>
 public class WorkloadIntercept
 {
-    private readonly string? _handler;
-    private readonly string? _name;
-    private readonly int _localPort;
+    private string? _handler;
+    private string? _name;
+    private int? _localPort;
     private readonly string? _localAddress;
-    private readonly string? _service;
+    private string? _service;
     private readonly int? _port;
     private readonly bool? _global;
-    private readonly IEnumerable<NamedValuePair<string, string>>? _headers;
+    private IEnumerable<NamedValuePair<string, string>>? _headers;
 
+    /// <summary>
+    /// The services and/or ports to intercept
+    /// </summary>
     public WorkloadIntercept()
     {
-        var name = Assembly
-            .GetEntryAssembly()?
-            .GetName()
-            .Name?
-            .Replace('.', '-')
-            .Replace('_', '-')
-            .ToLowerInvariant();
-
-        _name = name;
-        _handler = name;
-        _service = name;
-
-        _localPort = GenerateRandomLocalPort();
-        _headers = GenerateDefaultHeaders();
     }
 
-    public WorkloadIntercept(string name)
-    {
-        Name = name;
-        Handler = name;
-        Service = name;
-    }
+    /// <summary>
+    /// The services and/or ports to intercept
+    /// </summary>
+    public WorkloadIntercept(string name) => Name = name;
     
     /// <summary>
     /// If set to false, disabled this intercept.
@@ -52,28 +39,21 @@ public class WorkloadIntercept
     /// <summary>
     /// The intercept handler that handles this intercept.
     /// </summary>
-    // todo: could we default the handler / service / name to a convention?
     public string? Handler
     {
-        get
-        {
-            if (string.IsNullOrWhiteSpace(_handler))
-                throw new ArgumentNullException(nameof(Handler));
-
-            return _handler;
-        }
+        get => _handler ??= Name;
         init
         {
             if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentNullException(nameof(value));
+                throw new ArgumentNullException(nameof(Handler));
             
             if (value.Length > 64)
-                throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
+                throw new InvalidOperationException(Exceptions.CantExceed64Characters);
             
             const string pattern = "^[a-zA-Z][a-zA-Z0-9_-]*$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
 
             _handler = value;
         }
@@ -84,19 +64,19 @@ public class WorkloadIntercept
     /// </summary>
     public string? Name
     {
-        get => _name;
+        get => _name ??= Defaults.Name;
         init
         {
             if (string.IsNullOrWhiteSpace(value))
                 return;
             
             if (value.Length > 64)
-                throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
+                throw new InvalidOperationException(Exceptions.CantExceed64Characters);
             
             const string pattern = "^[a-zA-Z][a-zA-Z0-9_-]*$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
 
             _name = value;
         }
@@ -108,18 +88,14 @@ public class WorkloadIntercept
     /// </summary>
     public int? LocalPort
     {
-        get => _localPort;
+        get => _localPort ??= GenerateRandomLocalPort();
         init
         {
             if (value == null)
-            {
-                _localPort = GenerateRandomLocalPort();
-
                 return;
-            }
 
             if (value is < 1 or > 65535)
-                throw new InvalidOperationException(Constants.Exceptions.NotValidPort);
+                throw new InvalidOperationException(Exceptions.NotValidPort);
 
             _localPort = (int)value;
         }
@@ -139,7 +115,7 @@ public class WorkloadIntercept
             const string pattern = @"^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Constants.Exceptions.NotAnIpAddress);
+                throw new InvalidOperationException(Exceptions.NotAnIpAddress);
 
             _localAddress = value;
         }
@@ -155,7 +131,7 @@ public class WorkloadIntercept
     /// </summary>
     public string? Service
     {
-        get => _service;
+        get => _service ??= Name;
         init
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -164,7 +140,7 @@ public class WorkloadIntercept
             const string pattern = "^[a-z][a-z0-9-]{1,62}$";
             
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
 
             _service = value;
         }
@@ -182,7 +158,7 @@ public class WorkloadIntercept
                 return;
             
             if (value is < 1 or > 65535)
-                throw new InvalidOperationException(Constants.Exceptions.NotValidPort);
+                throw new InvalidOperationException(Exceptions.NotValidPort);
 
             _port = value;
         }
@@ -205,7 +181,7 @@ public class WorkloadIntercept
                 !string.IsNullOrWhiteSpace(PathSuffix) ||
                 !string.IsNullOrWhiteSpace(PathEqual) ||
                 !string.IsNullOrWhiteSpace(PathRegexp))
-                throw new InvalidOperationException(Constants.Exceptions.GlobalMutuallyExclusive);
+                throw new InvalidOperationException(Exceptions.GlobalMutuallyExclusive);
 
             _global = value;
         } 
@@ -223,15 +199,11 @@ public class WorkloadIntercept
     /// </summary>
     public IEnumerable<NamedValuePair<string, string>>? Headers
     {
-        get => _headers;
+        get => _headers ??= GenerateDefaultHeaders();
         init
         {
             if (value == null || !value.Any())
-            {
-                GenerateDefaultHeaders();
-
                 return;
-            }
 
             _headers = value;
         }
@@ -270,7 +242,10 @@ public class WorkloadIntercept
     /// </summary>
     public bool? Plaintext { get; init; }
     
-    public PreviewUrl? PreviewUrl { get; init; }
+    /// <summary>
+    /// Configures the Preview URL generated by Telepresence Enterprise.
+    /// </summary>
+    [YamlMember(Alias = "previewURL")] public PreviewUrl? PreviewUrl { get; init; }
 
     private static int GenerateRandomLocalPort()
     {

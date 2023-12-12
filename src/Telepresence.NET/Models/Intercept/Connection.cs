@@ -12,12 +12,21 @@ public sealed class Connection
     private readonly string? _managerNamespace;
     private readonly IEnumerable<string>? _mappedNamespaces;
 
+    /// <summary>
+    /// Connection properties to use when Telepresence connects to the cluster.
+    /// </summary>
     public Connection()
     {
     }
 
+    /// <summary>
+    /// Connection properties to use when Telepresence connects to the cluster.
+    /// </summary>
     public Connection(string context) => Context = context;
 
+    /// <summary>
+    /// Connection properties to use when Telepresence connects to the cluster.
+    /// </summary>
     public Connection(string context, string @namespace)
     {
         Context = context;
@@ -79,12 +88,12 @@ public sealed class Connection
                 return;
 
             if (value.Length > 64)
-                throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
+                throw new InvalidOperationException(Exceptions.CantExceed64Characters);
             
             const string pattern = "^[a-z][a-z0-9-]*$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
 
             _name = value;
         }
@@ -100,12 +109,12 @@ public sealed class Connection
         init
         {
             if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentNullException(nameof(value));
+                throw new ArgumentNullException(nameof(Namespace));
             
             const string pattern = "^[a-z0-9][a-z0-9-]{1,62}$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
 
             _namespace = value;
         }
@@ -120,12 +129,12 @@ public sealed class Connection
         init
         {
             if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentNullException(nameof(value));
+                throw new ArgumentNullException(nameof(ManagerNamespace));
             
             const string pattern = "^[a-z0-9][a-z0-9-]{1,62}$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
 
             _managerNamespace = value;
         }
@@ -140,12 +149,12 @@ public sealed class Connection
         init
         {
             if (value == null)
-                throw new ArgumentNullException(nameof(value));
+                throw new ArgumentNullException(nameof(MappedNamespaces));
 
             const string pattern = "^[a-z0-9][a-z0-9-]{1,62}$";
             
             if (value.Any(@namespace => !Regex.IsMatch(@namespace, pattern)))
-                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
 
             _mappedNamespaces = value;
         }
