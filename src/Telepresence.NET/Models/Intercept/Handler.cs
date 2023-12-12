@@ -3,6 +3,11 @@ using Telepresence.NET.Models.Intercept.Handlers;
 
 namespace Telepresence.NET.Models.Intercept;
 
+internal interface IHandlerStrategy
+{
+    Task Handle(CancellationToken cancellationToken = default);
+}
+
 /// <summary>
 /// The resource where the intercepted requests will be routed to, i.e. a running version of the code on your machine.
 /// </summary>
@@ -10,7 +15,7 @@ public class Handler
 {
     private string? _name;
     private readonly IEnumerable<NamedValuePair<string, string>>? _environment;
-    private External? _external;
+    private IHandlerStrategy? _handlerStrategy;
 
     /// <summary>
     /// The resource where the intercepted requests will be routed to, i.e. a running version of the code on your machine.
@@ -90,18 +95,23 @@ public class Handler
     {
         get
         {
-            if (_external != null)
-                return _external;
+            if (_handlerStrategy is External external)
+                return external;
             
             var temporaryDirectory = Path.Combine(Path.GetTempPath(), nameof(Telepresence).ToLowerInvariant(), Name);
             var outputPath = Path.Combine(temporaryDirectory, $"{Name}-output.json");
-            
-            return _external = new External
+            var externalHandler = new External 
             {
                 OutputFormat = OutputFormat.Json,
                 OutputPath = outputPath
             };
+
+            _handlerStrategy = externalHandler;
+
+            return externalHandler;
         }
-        init => _external = value;
+        init => _handlerStrategy = value;
     }
+
+    public Task Handle(CancellationToken cancellationToken = default) => _handlerStrategy.Handle(cancellationToken);
 }

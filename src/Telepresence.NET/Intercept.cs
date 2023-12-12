@@ -123,7 +123,7 @@ public class Intercept
     /// Connect to the traffic manager in the cluster.
     /// Automatically done if not already connected.
     /// </summary>
-    public async Task Connect()
+    public async Task Connect(CancellationToken cancellationToken = default)
     {
         if (_isConnected)
             return;
@@ -186,7 +186,7 @@ public class Intercept
             connectProcess.BeginOutputReadLine();
             connectProcess.BeginErrorReadLine();
             
-            await connectProcess.WaitForExitAsync();
+            await connectProcess.WaitForExitAsync(cancellationToken);
 
             _isConnected = true;
         }
@@ -199,13 +199,11 @@ public class Intercept
     /// <summary>
     /// Start the intercept.
     /// </summary>
-    public async Task Start(TimeSpan? timeout = null)
+    public async Task Start(CancellationToken cancellationToken = default)
     {
-        timeout ??= TimeSpan.FromSeconds(30);
-        
-        await Connect();
-        await Leave();
-        await CreateInterceptSpecification();
+        await Connect(cancellationToken);
+        await Leave(cancellationToken);
+        await CreateInterceptSpecification(cancellationToken);
         
         LogToConsole($"Starting intercept: {Name}");
 
@@ -260,35 +258,13 @@ public class Intercept
             if (handler == null)
                 throw new InvalidOperationException(Exceptions.NoHandlerFound);
 
-            // todo: implement a strategy pattern for doing this as part of the handlers implementation
-            // if (handler is External)
-            if (handler.External != null)
-            {
-                var cancellationTokenSource = new CancellationTokenSource();
-                cancellationTokenSource.CancelAfter((int)timeout.Value.TotalMilliseconds);
-
-                if (string.IsNullOrWhiteSpace(handler.External.OutputPath))
-                    return;
-                
-                await WaitForOutputFile(handler.External.OutputPath, cancellationTokenSource.Token);
-    
-                // if the file doesn't exist after (n) seconds then the intercept clearly didn't work, so just exit here
-                if (!File.Exists(handler.External.OutputPath))
-                {
-                    await Leave();
-                    throw new InvalidOperationException(Exceptions.UnableToStartIntercept);
-                }
-    
-                OutputLoader.LoadEnvironment(handler.External.OutputPath);
-                
-                // explicitly set the port for Kestrel to listen on because this may have come back from the cluster
-                // todo: account for tls
-                Environment.SetEnvironmentVariable("DOTNET_URLS", $"http://+:{intercept.LocalPort}");
-                Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://+:{intercept.LocalPort}");
-                
-                if (File.Exists(handler.External.OutputPath))
-                    File.Delete(handler.External.OutputPath);
-            }
+            await handler.Handle(cancellationToken);
+            
+            // explicitly set the port for Kestrel to listen on because this may have come back from the cluster
+            // todo: account for tls
+            // todo: find a more logical place for this if this is not it, maybe a strategy pattern for intercepts too?
+            Environment.SetEnvironmentVariable("DOTNET_URLS", $"http://+:{intercept.LocalPort}");
+            Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://+:{intercept.LocalPort}");
             
             LogToConsole($"Intercept started: {Name}");
         }
@@ -302,7 +278,7 @@ public class Intercept
     /// <summary>
     /// Leave the intercept.
     /// </summary>
-    public async Task Leave()
+    public async Task Leave(CancellationToken cancellationToken = default)
     {
         LogToConsole($"Attempting to leave previous intercept: {Name}");
 
@@ -349,7 +325,7 @@ public class Intercept
             leaveIntercept.BeginOutputReadLine();
             leaveIntercept.BeginErrorReadLine();
 
-            await leaveIntercept.WaitForExitAsync();
+            await leaveIntercept.WaitForExitAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -360,7 +336,7 @@ public class Intercept
     /// <summary>
     /// Disconnect from the traffic manager in the cluster.
     /// </summary>
-    public async Task Quit(bool stopDaemons = false)
+    public async Task Quit(bool stopDaemons = false, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
@@ -403,7 +379,7 @@ public class Intercept
     // todo: temporary - use proper logging
     private static void LogToConsole(string log) => Console.WriteLine($"[telepresence]: {log}");
 
-    private Task CreateInterceptSpecification()
+    private Task CreateInterceptSpecification(CancellationToken cancellationToken = default)
     {
         _temporaryDirectory = Path.Combine(Path.GetTempPath(), nameof(Telepresence).ToLowerInvariant(), Name);
         _interceptSpecificationPath = Path.Combine(_temporaryDirectory, $"{Name}-intercept-specification.yaml");
@@ -411,36 +387,6 @@ public class Intercept
         if (!Directory.Exists(_temporaryDirectory))
             Directory.CreateDirectory(_temporaryDirectory);
         
-        return File.WriteAllTextAsync(_interceptSpecificationPath, ToString());
-    }
-    
-    // todo: move into external handler strategy
-    private async Task WaitForOutputFile(string outputPath, CancellationToken cancellationToken = default)
-    {
-        LogToConsole("Waiting for output file");
-
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                if (File.Exists(outputPath))
-                    return;
-
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
-            }
-        }
-        catch (TaskCanceledException)
-        {
-            LogToConsole("Operation timed out");
-        }
-        catch (OperationCanceledException)
-        {
-            LogToConsole("Operation timed out");
-        }
-        catch (Exception ex)
-        {
-            LogToConsole(ex.Message);
-            throw;
-        }
+        return File.WriteAllTextAsync(_interceptSpecificationPath, ToString(), cancellationToken);
     }
 }
