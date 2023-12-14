@@ -67,9 +67,9 @@ public class Intercept
     /// <summary>
     /// Remote workloads that are intercepted, keyed by workload name.
     /// </summary>
-    public IEnumerable<Workload>? Workloads
+    public IEnumerable<Workload> Workloads
     {
-        get => _workloads ??= new Workload[]
+        get => _workloads ??= new List<Workload>
         {
             new() { Name = _name }
         };
@@ -88,9 +88,9 @@ public class Intercept
     /// <summary>
     /// Local services running on the host machine that handle the intercepted services requests.
     /// </summary>
-    public IEnumerable<Handler>? Handlers
+    public IEnumerable<Handler> Handlers
     {
-        get => _handlers ??= new Handler[]
+        get => _handlers ??= new List<Handler>
         {
             new() { Name = _name }
         };
@@ -339,12 +339,14 @@ public class Intercept
     public async Task Quit(bool stopDaemons = false, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
+
+        DestroyAssets();
     }
     
     /// <summary>
     /// Clean up created resources.
     /// </summary>
-    public void DestroyAssets()
+    private void DestroyAssets()
     {
         if (Directory.Exists(_temporaryDirectory))
             Directory.Delete(_temporaryDirectory, true);

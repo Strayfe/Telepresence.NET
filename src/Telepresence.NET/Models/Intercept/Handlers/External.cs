@@ -21,6 +21,9 @@ public class External : IHandlerStrategy
     /// </summary>
     public string? OutputPath { get; init; }
 
+    /// <summary>
+    /// 
+    /// </summary>
     public async Task Handle(CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(OutputPath))
@@ -40,14 +43,25 @@ public class External : IHandlerStrategy
             File.Delete(OutputPath);
     }
     
-    private async Task WaitForOutputFile(string outputPath, CancellationToken cancellationToken = default)
+    private static async Task WaitForOutputFile(string outputPath, CancellationToken cancellationToken = default)
     {
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
                 if (File.Exists(outputPath))
-                    return;
+                {
+                    try
+                    {
+                        // check to see if the file can be opened to read the contents
+                        await using var stream = File.Open(outputPath, FileMode.Open, FileAccess.Read);
+                        return;
+                    }
+                    catch (IOException)
+                    {
+                        // file is not yet readable so just continue the loop until it becomes readable or times out
+                    }
+                }
 
                 await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
             }

@@ -26,7 +26,7 @@ public class Workload
     /// The name of the workload.
     /// Defaults to the normalized assembly name.
     /// </summary>
-    public string? Name
+    public string Name
     {
         get => _name ??= Defaults.Name;
         init
@@ -51,7 +51,7 @@ public class Workload
     /// </summary>
     public IEnumerable<WorkloadIntercept>? Intercepts
     {
-        get => _intercepts ??= new WorkloadIntercept[]
+        get => _intercepts ??= new List<WorkloadIntercept>
         {
             new() { Name = _name }
         };
