@@ -266,9 +266,7 @@ public class Intercept
             _interceptProcess.ErrorDataReceived += (sender, args) =>
             {
                 if (!string.IsNullOrWhiteSpace(args.Data))
-                {
-                    throw new Exception(args.Data);
-                }
+                    LogToConsole(args.Data);
             };
 
             _interceptProcess.Start();

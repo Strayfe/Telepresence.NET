@@ -5,7 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>default</LangVersion>
-        <Version>0.1.8</Version>
+        <Version>0.1.9</Version>
         <Title>Telepresence.NET</Title>
         <Description>This package serves as a convenient wrapper around the Telepresence CLI and its corresponding RESTful API.</Description>
         <PackageReadmeFile>README.md</PackageReadmeFile>
