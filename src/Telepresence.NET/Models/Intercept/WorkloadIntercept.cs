@@ -271,7 +271,9 @@ public class WorkloadIntercept
             new NamedValuePair<string, string>
             {
                 Name = "x-telepresence-intercept-as",
-                Value = "{{ .Telepresence.Username }}"
+                Value = Environment.UserName
+                // seems to be broken on windows currently, doesn't seem to escape backslashes, will raise to ambassador
+                // "{{ .Telepresence.Username }}"
             }
         };
 }
