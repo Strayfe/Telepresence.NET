@@ -1,83 +1,89 @@
-using System.Reflection;
 using Newtonsoft.Json;
 using Telepresence.NET.Models.Output;
 
 namespace Telepresence.NET;
 
+/// <summary>
+/// 
+/// </summary>
 public static class OutputLoader
 {
-    private static string? InterceptName => Assembly
-        .GetEntryAssembly()?
-        .GetName()
-        .Name?
-        .Replace('.', '-')
-        .Replace('_', '-')
-        .ToLowerInvariant();
-    
-    // load environment based on convention
-    public static void LoadEnvironment()
+    public static async Task LoadEnvironment(string output, CancellationToken cancellationToken = default)
     {
-        var tempPath = Path.GetTempPath();
-        var interceptSpecificationPath = Path.Combine(tempPath, $"{InterceptName}.json");
-        
-        LoadEnvironment(interceptSpecificationPath);
+        await ProcessJsonOutput(output, cancellationToken);
     }
     
-    // load environment from a specific file
-    public static void LoadEnvironment(string filePath)
+    /// <summary>
+    /// Loads environment variables from an output file into the currently running process.
+    /// </summary>
+    public static async Task LoadEnvironmentFromFile(string filePath, CancellationToken cancellationToken = default)
     {
         if (!File.Exists(filePath))
             return;
-
+        
         var extension = Path.GetExtension(filePath);
-
-        var processors = new Dictionary<string, Action<string>>
+        
+        var processors = new Dictionary<string, Func<string, CancellationToken, Task>>(StringComparer.OrdinalIgnoreCase)
         {
-            { ".json", ProcessJson },
-            { ".yml", ProcessYaml },
-            { ".yaml", ProcessYaml },
-            { ".env", ProcessDotEnv }
+            [".json"] = ProcessJson,
+            [".yml"] = ProcessYaml,
+            [".yaml"] = ProcessYaml,
+            [".env"] = ProcessDotEnv,
         };
-
-        if (processors.ContainsKey(extension)) 
-            processors[extension](filePath);
+        
+        if (processors.TryGetValue(extension, out var processor)) 
+            await processor(filePath, cancellationToken);
     }
     
-    private static void ProcessJson(string filePath)
+    private static async Task ProcessJsonOutput(string output, CancellationToken cancellationToken = default)
     {
-        var json = File.ReadAllText(filePath);
+        var interceptOutput = JsonConvert.DeserializeObject<InterceptOutput>(output);
+
+        if (interceptOutput == null)
+            return;
+        
+        // get environment from individual intercepts (limited to first for now)
+        var firstIntercept = interceptOutput.Intercepts?.FirstOrDefault();
+
+        if (firstIntercept?.Environment is { Count: > 0 })
+            SetEnvironmentVariables(firstIntercept.Environment);
+
+        // apply environment overrides applied directly to intercept specification
+        if (interceptOutput.Environment is { Count: > 0 })
+            SetEnvironmentVariables(interceptOutput.Environment);
+    }
+    
+    private static async Task ProcessJson(string filePath, CancellationToken cancellationToken = default)
+    {
+        await WaitForRead(filePath, cancellationToken);
+        
+        var json = await File.ReadAllTextAsync(filePath, cancellationToken);
         var interceptOutput = JsonConvert.DeserializeObject<InterceptOutput>(json);
 
         if (interceptOutput == null)
             return;
         
         // get environment from individual intercepts (limited to first for now)
-        var intercept = interceptOutput
-            .Intercepts?
-            .FirstOrDefault(x => string.Equals(x.Name, InterceptName, StringComparison.OrdinalIgnoreCase));
+        var firstIntercept = interceptOutput.Intercepts?.FirstOrDefault();
 
-        if (intercept is { Environment: not null } && intercept.Environment.Any())
-        {
-            foreach (var environment in intercept.Environment)
-                Environment.SetEnvironmentVariable(environment.Key, environment.Value);
-        }
+        if (firstIntercept?.Environment is { Count: > 0 })
+            SetEnvironmentVariables(firstIntercept.Environment);
 
         // apply environment overrides applied directly to intercept specification
-        if (interceptOutput.Environment == null || !interceptOutput.Environment.Any())
-            return;
-        
-        foreach (var environment in interceptOutput.Environment)
-                Environment.SetEnvironmentVariable(environment.Key, environment.Value);
+        if (interceptOutput.Environment is { Count: > 0 })
+            SetEnvironmentVariables(interceptOutput.Environment);
     }
 
-    private static void ProcessYaml(string filePath)
+    private static Task ProcessYaml(string filePath, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
     // this is a bit rudimentary, more processing may be required to handle empty variables, commented variables, etc.
-    private static void ProcessDotEnv(string filePath)
+    private static Task ProcessDotEnv(string filePath, CancellationToken cancellationToken = default)
     {
+        throw new NotImplementedException();
+        
         foreach (var line in File.ReadAllLines(filePath))
         {
             var parts = line.Split('=', StringSplitOptions.RemoveEmptyEntries);
@@ -87,5 +93,29 @@ public static class OutputLoader
     
             Environment.SetEnvironmentVariable(parts[0], parts[1]);
         }
+
+        return Task.CompletedTask;
+    }
+
+    private static async Task WaitForRead(string filePath, CancellationToken cancellationToken = default)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await using var inputStream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                return;
+            }
+            catch (IOException)
+            {
+                // loop until file becomes readable with sharable lock or times out
+            } 
+        }
+    }
+    
+    private static void SetEnvironmentVariables(IEnumerable<KeyValuePair<string, string>> environments)
+    {
+        foreach (var environment in environments)
+            Environment.SetEnvironmentVariable(environment.Key, environment.Value);
     }
 }

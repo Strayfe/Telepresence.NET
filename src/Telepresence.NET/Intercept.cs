@@ -227,26 +227,9 @@ public class Intercept
                     CreateNoWindow = true,
                 }
             };
-
-            _interceptProcess.OutputDataReceived += (sender, args) =>
-            {
-                if (!string.IsNullOrWhiteSpace(args.Data))
-                    LogToConsole(args.Data);
-            };
-            
-            _interceptProcess.ErrorDataReceived += (sender, args) =>
-            {
-                if (!string.IsNullOrWhiteSpace(args.Data))
-                    LogToConsole(args.Data);
-            };
-
-            _interceptProcess.Start();
-            
-            _interceptProcess.BeginOutputReadLine();
-            _interceptProcess.BeginErrorReadLine();
             
             // known limitation: only works with first of collection for now
-            var workload = Workloads?.FirstOrDefault();
+            var workload = Workloads.FirstOrDefault();
             if (workload == null)
                 throw new InvalidOperationException(Exceptions.NoWorkloadFound);
 
@@ -254,11 +237,46 @@ public class Intercept
             if (intercept == null)
                 throw new InvalidOperationException(Exceptions.NoWorkloadInterceptFound);
 
-            var handler = Handlers?.FirstOrDefault();
+            var handler = Handlers.FirstOrDefault();
             if (handler == null)
                 throw new InvalidOperationException(Exceptions.NoHandlerFound);
 
-            await handler.Handle(cancellationToken);
+            var outputWaiter = new TaskCompletionSource<bool>(cancellationToken);
+            
+            _interceptProcess.OutputDataReceived += async (sender, args) =>
+            {
+                if (string.IsNullOrWhiteSpace(args.Data))
+                    return;
+
+                // this flow should probably only exist for external?
+                if (args.Data.StartsWith('{') && args.Data.Contains("\"environment\":"))
+                {
+                    var outputString = args.Data[..(args.Data.LastIndexOf('}') + 1)];
+                    
+                    await handler.Handle(outputString, cancellationToken);
+                    
+                    outputWaiter.SetResult(true);
+                    
+                    return;
+                }
+                
+                LogToConsole(args.Data);
+            };
+            
+            _interceptProcess.ErrorDataReceived += (sender, args) =>
+            {
+                if (!string.IsNullOrWhiteSpace(args.Data))
+                {
+                    throw new Exception(args.Data);
+                }
+            };
+
+            _interceptProcess.Start();
+            
+            _interceptProcess.BeginOutputReadLine();
+            _interceptProcess.BeginErrorReadLine();
+
+            await outputWaiter.Task;
             
             // explicitly set the port for Kestrel to listen on because this may have come back from the cluster
             // todo: account for tls

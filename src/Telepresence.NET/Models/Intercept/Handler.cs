@@ -5,7 +5,7 @@ namespace Telepresence.NET.Models.Intercept;
 
 internal interface IHandlerStrategy
 {
-    Task Handle(CancellationToken cancellationToken = default);
+    Task Handle(string output, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -100,10 +100,11 @@ public class Handler
             
             var temporaryDirectory = Path.Combine(Path.GetTempPath(), nameof(Telepresence).ToLowerInvariant(), Name);
             var outputPath = Path.Combine(temporaryDirectory, $"{Name}-output.json");
+            
             var externalHandler = new External 
             {
                 OutputFormat = OutputFormat.Json,
-                OutputPath = outputPath
+                OutputPath = "stdout"
             };
 
             _handlerStrategy = externalHandler;
@@ -113,5 +114,9 @@ public class Handler
         init => _handlerStrategy = value;
     }
 
-    public Task Handle(CancellationToken cancellationToken = default) => _handlerStrategy.Handle(cancellationToken);
+    /// <summary>
+    /// Run any operations required by the handler.
+    /// Sorts of things like injecting environment variables into the running process.
+    /// </summary>
+    public Task Handle(string output, CancellationToken cancellationToken = default) => _handlerStrategy.Handle(output, cancellationToken);
 }

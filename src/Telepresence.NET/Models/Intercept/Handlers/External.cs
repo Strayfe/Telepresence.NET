@@ -20,27 +20,46 @@ public class External : IHandlerStrategy
     /// Can be stdout, stderr, or a file path.
     /// </summary>
     public string? OutputPath { get; init; }
+    
+    // public async Task Handle(CancellationToken cancellationToken = default)
+    // {
+    //     if (string.IsNullOrWhiteSpace(OutputPath))
+    //         return;
+    //
+    //     var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+    //     linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
+    //
+    //     await WaitForOutputFile(OutputPath, linkedTokenSource.Token);
+    //
+    //     if (!File.Exists(OutputPath))
+    //         throw new InvalidOperationException(Exceptions.UnableToStartIntercept);
+    //
+    //     // reset the timeout
+    //     linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
+    //     
+    //     await OutputLoader.LoadEnvironment(OutputPath, linkedTokenSource.Token);
+    //
+    //     // due to issues on windows that need further testing, we cannot delete the output file because telepresence
+    //     // seems to hold a lock on the file for about 90 seconds after its finished writing
+    //     // if (File.Exists(OutputPath))
+    //     //     File.Delete(OutputPath);
+    // }
 
-    /// <summary>
-    /// 
-    /// </summary>
-    public async Task Handle(CancellationToken cancellationToken = default)
+    public async Task Handle(string output, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(OutputPath))
+        if (string.Equals("stdout", OutputPath, StringComparison.OrdinalIgnoreCase))
+        {
+            await OutputLoader.LoadEnvironment(output, cancellationToken);
             return;
+        }
 
-        var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
-
-        await WaitForOutputFile(OutputPath, linkedTokenSource.Token);
-    
-        if (!File.Exists(OutputPath))
-            throw new InvalidOperationException(Exceptions.UnableToStartIntercept);
-    
-        OutputLoader.LoadEnvironment(OutputPath);
-                
-        if (File.Exists(OutputPath))
-            File.Delete(OutputPath);
+        if (string.Equals("stderr", OutputPath, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new NotImplementedException();
+        }
+        
+        // if its a file path, throw for now
+        throw new NotImplementedException();
     }
     
     private static async Task WaitForOutputFile(string outputPath, CancellationToken cancellationToken = default)
@@ -50,18 +69,7 @@ public class External : IHandlerStrategy
             while (!cancellationToken.IsCancellationRequested)
             {
                 if (File.Exists(outputPath))
-                {
-                    try
-                    {
-                        // check to see if the file can be opened to read the contents
-                        await using var stream = File.Open(outputPath, FileMode.Open, FileAccess.Read);
-                        return;
-                    }
-                    catch (IOException)
-                    {
-                        // file is not yet readable so just continue the loop until it becomes readable or times out
-                    }
-                }
+                    return;
 
                 await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
             }
