@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Text.RegularExpressions;
+using Serilog;
+using Serilog.Core;
 using Telepresence.NET.Converters;
 using Telepresence.NET.Models.Intercept;
 using YamlDotNet.Serialization;
@@ -12,28 +14,39 @@ namespace Telepresence.NET;
 /// </summary>
 public class Intercept
 {
-    private string? _temporaryDirectory;
-    private string? _interceptSpecificationPath;
-    private bool _isConnected;
-    private string? _name;
-    // todo: private IEnumerable<Prerequisites> _prerequisites;
-    private readonly Connection? _connection;
-    private IEnumerable<Workload>? _workloads;
-    private IEnumerable<Handler>? _handlers;
+    private readonly Logger _logger;
     
-    private Process? _interceptProcess;
-
     /// <summary>
     /// An intercept specification and processes to control intercepting workloads in a kubernetes cluster.
     /// </summary>
     public Intercept()
     {
+        _logger = new LoggerConfiguration()
+            .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}][telepresence] {Message:lj}{NewLine}{Exception}")
+            .CreateLogger();
     }
-
+    
     /// <summary>
     /// An intercept specification and processes to control intercepting workloads in a kubernetes cluster.
     /// </summary>
-    public Intercept(string name) => Name = name;
+    public Intercept(string name)
+    {
+        _logger = new LoggerConfiguration()
+            .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}][telepresence] {Message:lj}{NewLine}{Exception}")
+            .CreateLogger();
+        
+        Name = name;
+    }
+
+    private string? _temporaryDirectory;
+    private string? _interceptSpecificationPath;
+    private bool _isConnected;
+    private string? _name;
+    // todo: private IEnumerable<Prerequisites> _prerequisites;
+    private Connection? _connection;
+    private IEnumerable<Workload>? _workloads;
+    private IEnumerable<Handler>? _handlers;
+    private Process? _interceptProcess;
 
     /// <summary>
     /// A name to give to the specification.
@@ -60,7 +73,7 @@ public class Intercept
     /// </summary>
     public Connection? Connection
     {
-        get => _connection;
+        get => _connection ??= new Connection();
         init => _connection = value ?? throw new ArgumentNullException(nameof(Connection));
     }
     
@@ -128,10 +141,14 @@ public class Intercept
         if (_isConnected)
             return;
         
-        LogToConsole("Attempting to connect to cluster");
+        // todo: configure a timeout 
+        // var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        // linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
+        
+        _logger.Information("Attempting to connect to cluster");
         
         if (Connection == null)
-            LogToConsole("Connection not defined, will try to determine from context");
+            _logger.Information("Connection not defined, will try to determine from context");
         
         try
         {
@@ -168,17 +185,17 @@ public class Intercept
             {
                 if (!string.IsNullOrWhiteSpace(args.Data))
                 {
-                    LogToConsole(args.Data);
+                    _logger.Information(args.Data);
                     return;
                 }
                 
-                LogToConsole("Already connected");
+                _logger.Information("Already connected");
             };
             
             connectProcess.ErrorDataReceived += (sender, args) =>
             {
                 if (!string.IsNullOrWhiteSpace(args.Data))
-                    LogToConsole(args.Data);
+                    _logger.Information(args.Data);
             };
 
             connectProcess.Start();
@@ -192,7 +209,7 @@ public class Intercept
         }
         catch (Exception ex)
         {
-            LogToConsole($"Couldn't connect to telepresence, {ex}");
+            _logger.Information(ex, "Couldn't connect to telepresence");
         }
     }
     
@@ -205,7 +222,10 @@ public class Intercept
         await Leave(cancellationToken);
         await CreateInterceptSpecification(cancellationToken);
         
-        LogToConsole($"Starting intercept: {Name}");
+        var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
+        
+        _logger.Information("Starting intercept: {Name}", Name);
 
         try
         {
@@ -241,40 +261,7 @@ public class Intercept
             if (handler == null)
                 throw new InvalidOperationException(Exceptions.NoHandlerFound);
 
-            var outputWaiter = new TaskCompletionSource<bool>(cancellationToken);
-            
-            _interceptProcess.OutputDataReceived += async (sender, args) =>
-            {
-                if (string.IsNullOrWhiteSpace(args.Data))
-                    return;
-
-                // this flow should probably only exist for external?
-                if (args.Data.StartsWith('{') && args.Data.Contains("\"environment\":"))
-                {
-                    var outputString = args.Data[..(args.Data.LastIndexOf('}') + 1)];
-                    
-                    await handler.Handle(outputString, cancellationToken);
-                    
-                    outputWaiter.SetResult(true);
-                    
-                    return;
-                }
-                
-                LogToConsole(args.Data);
-            };
-            
-            _interceptProcess.ErrorDataReceived += (sender, args) =>
-            {
-                if (!string.IsNullOrWhiteSpace(args.Data))
-                    LogToConsole(args.Data);
-            };
-
-            _interceptProcess.Start();
-            
-            _interceptProcess.BeginOutputReadLine();
-            _interceptProcess.BeginErrorReadLine();
-
-            await outputWaiter.Task;
+            await handler.Handle(_interceptProcess, linkedTokenSource.Token);
             
             // explicitly set the port for Kestrel to listen on because this may have come back from the cluster
             // todo: account for tls
@@ -282,11 +269,11 @@ public class Intercept
             Environment.SetEnvironmentVariable("DOTNET_URLS", $"http://+:{intercept.LocalPort}");
             Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://+:{intercept.LocalPort}");
             
-            LogToConsole($"Intercept started: {Name}");
+            _logger.Information("Intercept started: {Name}", Name);
         }
         catch (Exception ex)
         {
-            LogToConsole($"Error starting intercept: {ex}");
+            _logger.Information(ex, "Error starting intercept");
             throw;
         }
     }
@@ -296,7 +283,10 @@ public class Intercept
     /// </summary>
     public async Task Leave(CancellationToken cancellationToken = default)
     {
-        LogToConsole($"Attempting to leave previous intercept: {Name}");
+        var workload = Workloads.FirstOrDefault();
+        var intercept = workload?.Intercepts?.FirstOrDefault();
+        
+        _logger.Information("Attempting to leave previous intercept: {Name}", intercept?.Name ?? Name);
 
         try
         {
@@ -308,7 +298,7 @@ public class Intercept
                     ArgumentList =
                     {
                         "leave",
-                        $"{Name}"
+                        $"{intercept?.Name ?? Name}"
                     },
                     WorkingDirectory = Environment.CurrentDirectory,
                     RedirectStandardOutput = true,
@@ -321,19 +311,19 @@ public class Intercept
             leaveIntercept.OutputDataReceived += (sender, args) =>
             {
                 if (!string.IsNullOrWhiteSpace(args.Data))
-                    LogToConsole(args.Data);
+                    _logger.Information(args.Data);
             };
             leaveIntercept.ErrorDataReceived += (sender, args) =>
             {
                 // expected behaviour is that the intercept may not exist when trying to leave, this is fine
                 if (args.Data != null && args.Data.Contains("not found"))
                 {
-                    LogToConsole("No previous intercept found");
+                    _logger.Information("No previous intercept found");
                     return;
                 }
 
                 if (!string.IsNullOrWhiteSpace(args.Data))
-                    LogToConsole(args.Data);
+                    _logger.Information(args.Data);
             };
 
             leaveIntercept.Start();
@@ -345,7 +335,7 @@ public class Intercept
         }
         catch (Exception ex)
         {
-            LogToConsole($"Couldn't leave intercept: {ex}");
+            _logger.Information(ex, "Couldn't leave intercept");
         }
     }
 
@@ -393,10 +383,7 @@ public class Intercept
 
         return result;
     }
-
-    // todo: temporary - use proper logging
-    private static void LogToConsole(string log) => Console.WriteLine($"[telepresence]: {log}");
-
+    
     private Task CreateInterceptSpecification(CancellationToken cancellationToken = default)
     {
         _temporaryDirectory = Path.Combine(Path.GetTempPath(), nameof(Telepresence).ToLowerInvariant(), Name);

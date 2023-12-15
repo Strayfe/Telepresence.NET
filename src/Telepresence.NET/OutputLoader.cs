@@ -3,16 +3,11 @@ using Telepresence.NET.Models.Output;
 
 namespace Telepresence.NET;
 
-/// <summary>
-/// 
-/// </summary>
 public static class OutputLoader
 {
-    public static async Task LoadEnvironment(string output, CancellationToken cancellationToken = default)
-    {
-        await ProcessJsonOutput(output, cancellationToken);
-    }
-    
+    public static async Task LoadEnvironmentFromString(string outputString, CancellationToken cancellationToken = default) => 
+        await ProcessJsonOutput(outputString, cancellationToken);
+
     /// <summary>
     /// Loads environment variables from an output file into the currently running process.
     /// </summary>

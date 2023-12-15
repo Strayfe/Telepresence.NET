@@ -1,12 +1,10 @@
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Telepresence.NET.Models.Intercept.Handlers;
 
 namespace Telepresence.NET.Models.Intercept;
 
-internal interface IHandlerStrategy
-{
-    Task Handle(string output, CancellationToken cancellationToken = default);
-}
+
 
 /// <summary>
 /// The resource where the intercepted requests will be routed to, i.e. a running version of the code on your machine.
@@ -28,6 +26,9 @@ public class Handler
     /// The resource where the intercepted requests will be routed to, i.e. a running version of the code on your machine.
     /// </summary>
     public Handler(string name) => Name = name;
+
+    private const string StandardOutput = "stdout";
+    private const string StandardError = "stderr";
 
     /// <summary>
     /// The name of the intercept handler running locally.
@@ -98,13 +99,10 @@ public class Handler
             if (_handlerStrategy is External external)
                 return external;
             
-            var temporaryDirectory = Path.Combine(Path.GetTempPath(), nameof(Telepresence).ToLowerInvariant(), Name);
-            var outputPath = Path.Combine(temporaryDirectory, $"{Name}-output.json");
-            
             var externalHandler = new External 
             {
                 OutputFormat = OutputFormat.Json,
-                OutputPath = "stdout"
+                OutputPath = StandardOutput
             };
 
             _handlerStrategy = externalHandler;
@@ -118,5 +116,6 @@ public class Handler
     /// Run any operations required by the handler.
     /// Sorts of things like injecting environment variables into the running process.
     /// </summary>
-    public Task Handle(string output, CancellationToken cancellationToken = default) => _handlerStrategy.Handle(output, cancellationToken);
+    public Task Handle(Process process, CancellationToken cancellationToken = default) =>
+        _handlerStrategy.Handle(process, cancellationToken);
 }

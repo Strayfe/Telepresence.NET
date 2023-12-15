@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using k8s;
 
 namespace Telepresence.NET.Models.Intercept;
 
@@ -7,8 +8,8 @@ namespace Telepresence.NET.Models.Intercept;
 /// </summary>
 public sealed class Connection
 {
-    private readonly string? _name;
-    private readonly string? _namespace;
+    private string? _name;
+    private string? _namespace;
     private readonly string? _managerNamespace;
     private readonly IEnumerable<string>? _mappedNamespaces;
 
@@ -22,17 +23,7 @@ public sealed class Connection
     /// <summary>
     /// Connection properties to use when Telepresence connects to the cluster.
     /// </summary>
-    public Connection(string context) => Context = context;
-
-    /// <summary>
-    /// Connection properties to use when Telepresence connects to the cluster.
-    /// </summary>
-    public Connection(string context, string @namespace)
-    {
-        Context = context;
-        Namespace = @namespace;
-        Name = _name = $"{Context}-{Namespace}".ToLowerInvariant();;
-    }
+    public Connection(string name) => Name = name;
 
     /// <summary>
     /// Username to impersonate for the operation.
@@ -54,11 +45,11 @@ public sealed class Connection
     /// The name of the kubeconfig cluster to use.
     /// </summary>
     public string? Cluster { get; init; }
-    
+
     /// <summary>
     /// The name of the kubeconfig context to use. Defaults to the current context of the kubeconfig.
     /// </summary>
-    public string? Context { get; init; }
+    public string Context { get; init; } = KubernetesClientConfiguration.BuildConfigFromConfigFile().CurrentContext;
     
     /// <summary>
     /// The name of the kubeconfig user to use.
@@ -69,23 +60,13 @@ public sealed class Connection
     /// The name to use for this connection.
     /// Defaults to '<see cref="Context">&lt;context&gt;</see>-<see cref="Namespace">&lt;namespace&gt;</see>'.
     /// </summary>
-    public string? Name
+    public string Name
     {
-        get => _name;
+        get => _name ??= $"{Context}-{Namespace}";
         init
         {
-            if (string.IsNullOrWhiteSpace(_name) &&
-                !string.IsNullOrWhiteSpace(Context) &&
-                !string.IsNullOrWhiteSpace(Namespace))
-            {
-                _name = $"{Context}-{Namespace}".ToLowerInvariant();
-
-                return;
-            }
-
-            // todo: determine and set the context and default namespace from the current kubeconfig 
             if (string.IsNullOrWhiteSpace(value))
-                return;
+                throw new ArgumentNullException(nameof(Name));
 
             if (value.Length > 64)
                 throw new InvalidOperationException(Exceptions.CantExceed64Characters);
@@ -103,9 +84,9 @@ public sealed class Connection
     /// The namespace that this connection is bound to.
     /// Defaults to the default appointed by the context.
     /// </summary>
-    public string? Namespace
+    public string Namespace
     {
-        get => _namespace;
+        get => _namespace ??= KubernetesClientConfiguration.BuildConfigFromConfigFile().Namespace;
         init
         {
             if (string.IsNullOrWhiteSpace(value))

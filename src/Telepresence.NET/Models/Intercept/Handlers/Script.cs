@@ -1,9 +1,11 @@
+using System.Diagnostics;
+
 namespace Telepresence.NET.Models.Intercept.Handlers;
 
 /// <summary>
 /// Run a script using a shell.
 /// </summary>
-public class Script
+public class Script : IHandlerStrategy
 {
     private readonly string? _run;
 
@@ -26,4 +28,9 @@ public class Script
     }
 
     public Shell? Shell { get; init; }
+    
+    public async Task Handle(Process process, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
 }
