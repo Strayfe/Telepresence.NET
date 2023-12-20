@@ -1,8 +1,8 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Telepresence.NET.Runner" type="DotNetProject" factoryName=".NET Project">
-    <option name="EXE_PATH" value="$PROJECT_DIR$/src/Telepresence.NET.Runner/bin/Debug/net6.0/Telepresence.NET.Runner" />
+    <option name="EXE_PATH" value="$PROJECT_DIR$/src/Telepresence.NET.Runner.Console/bin/Debug/net6.0/Telepresence.NET.Runner.Console" />
     <option name="PROGRAM_PARAMETERS" value="" />
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/Telepresence.NET.Runner/bin/Debug/net6.0" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/Telepresence.NET.Runner.Console/bin/Debug/net6.0" />
     <option name="PASS_PARENT_ENVS" value="1" />
     <option name="USE_EXTERNAL_CONSOLE" value="0" />
     <option name="USE_MONO" value="0" />
