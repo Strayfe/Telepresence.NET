@@ -28,19 +28,19 @@ public class Workload
     /// </summary>
     public string Name
     {
-        get => _name ??= Defaults.Name;
+        get => _name ??= Constants.Defaults.NormalizedEntryAssembly;
         init
         {
             if (string.IsNullOrWhiteSpace(value))
                 throw new ArgumentNullException(nameof(Name));
 
             if (value.Length > 64)
-                throw new InvalidOperationException(Exceptions.CantExceed64Characters);
+                throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
             
             const string pattern = "^[a-z][a-z0-9-]*$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
 
             _name = value;
         }
@@ -64,7 +64,7 @@ public class Workload
             }
 
             if (!value.Any() || value.Count() > 16)
-                throw new InvalidOperationException(Exceptions.InvalidNumberOfInterceptsDefined);
+                throw new InvalidOperationException(Constants.Exceptions.InvalidNumberOfInterceptsDefined);
 
             _intercepts = value;
         }

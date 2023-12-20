@@ -69,12 +69,12 @@ public sealed class Connection
                 throw new ArgumentNullException(nameof(Name));
 
             if (value.Length > 64)
-                throw new InvalidOperationException(Exceptions.CantExceed64Characters);
+                throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
             
             const string pattern = "^[a-z][a-z0-9-]*$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
 
             _name = value;
         }
@@ -95,7 +95,7 @@ public sealed class Connection
             const string pattern = "^[a-z0-9][a-z0-9-]{1,62}$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
 
             _namespace = value;
         }
@@ -115,7 +115,7 @@ public sealed class Connection
             const string pattern = "^[a-z0-9][a-z0-9-]{1,62}$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
 
             _managerNamespace = value;
         }
@@ -135,7 +135,7 @@ public sealed class Connection
             const string pattern = "^[a-z0-9][a-z0-9-]{1,62}$";
             
             if (value.Any(@namespace => !Regex.IsMatch(@namespace, pattern)))
-                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
 
             _mappedNamespaces = value;
         }

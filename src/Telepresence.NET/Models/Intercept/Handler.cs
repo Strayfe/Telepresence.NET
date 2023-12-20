@@ -36,19 +36,19 @@ public class Handler
     /// </summary>
     public string? Name
     {
-        get => _name ??= Defaults.Name;
+        get => _name ??= Constants.Defaults.NormalizedEntryAssembly;
         init
         {
             if (string.IsNullOrWhiteSpace(value))
                 throw new ArgumentNullException(nameof(Name));
 
             if (value.Length > 64)
-                throw new InvalidOperationException(Exceptions.CantExceed64Characters);
+                throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
 
             const string pattern = "^[a-zA-Z][a-zA-Z0-9_-]*$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphensUnderscores);
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphensUnderscores);
 
             _name = value;
         }
@@ -68,7 +68,7 @@ public class Handler
             const string pattern = "^[a-zA-Z_][a-zA-Z0-9_]*$";
             
             if (value.Any(environment => !Regex.IsMatch(environment.Name, pattern)))
-                throw new InvalidOperationException(Exceptions.AlphaNumericWithUnderscores);
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithUnderscores);
 
             _environment = value;
         }

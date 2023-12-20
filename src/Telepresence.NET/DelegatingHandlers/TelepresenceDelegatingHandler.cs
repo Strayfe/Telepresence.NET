@@ -7,12 +7,9 @@ namespace Telepresence.NET.DelegatingHandlers;
 
 public class TelepresenceDelegatingHandler : DelegatingHandler
 {
-    private const string HeaderName = "x-telepresence-intercept-as";
-
     private readonly IHostEnvironment _environment;
     private readonly IHttpContextAccessor _httpContextAccessor;
-
-    private readonly string _interceptHeaderName;
+    private readonly DelegatingHandlerOptions _options;
 
     public TelepresenceDelegatingHandler(
         IHostEnvironment environment,
@@ -21,22 +18,26 @@ public class TelepresenceDelegatingHandler : DelegatingHandler
     {
         _environment = environment;
         _httpContextAccessor = httpContextAccessor;
-        _interceptHeaderName = options.Value.InterceptHeaderName ?? HeaderName;
+        _options = options.Value;
     }
 
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        if (!_environment.IsDevelopment())
+        if (_environment.IsProduction())
             return base.SendAsync(request, cancellationToken);
 
-        // todo: figure out how to identify if the caller is an event consumer so we can force adding in the header
         if (_httpContextAccessor.HttpContext is null)
             return base.SendAsync(request, cancellationToken);
-
-        if (_httpContextAccessor.HttpContext.Request.Headers.TryGetValue(_interceptHeaderName, out var routeAs))
-            request.Headers.TryAddWithoutValidation(_interceptHeaderName, routeAs.ToString());
+        
+        // todo: figure out how to identify if the caller is an event consumer so we can propagate headers from messages onto HTTP requests
+        
+        foreach (var interceptHeaderName in _options.InterceptHeaderNames)
+        {
+            if (_httpContextAccessor.HttpContext.Request.Headers.TryGetValue(interceptHeaderName, out var headerValue))
+                request.Headers.TryAddWithoutValidation(interceptHeaderName, headerValue.ToString());
+        }
 
         return base.SendAsync(request, cancellationToken);
     }

@@ -48,12 +48,12 @@ public class WorkloadIntercept
                 throw new ArgumentNullException(nameof(Handler));
             
             if (value.Length > 64)
-                throw new InvalidOperationException(Exceptions.CantExceed64Characters);
+                throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
             
             const string pattern = "^[a-zA-Z][a-zA-Z0-9_-]*$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
 
             _handler = value;
         }
@@ -64,19 +64,19 @@ public class WorkloadIntercept
     /// </summary>
     public string? Name
     {
-        get => _name ??= Defaults.Name;
+        get => _name ??= Constants.Defaults.NormalizedEntryAssembly;
         init
         {
             if (string.IsNullOrWhiteSpace(value))
                 return;
             
             if (value.Length > 64)
-                throw new InvalidOperationException(Exceptions.CantExceed64Characters);
+                throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
             
             const string pattern = "^[a-zA-Z][a-zA-Z0-9_-]*$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
 
             _name = value;
         }
@@ -95,7 +95,7 @@ public class WorkloadIntercept
                 return;
 
             if (value is < 1 or > 65535)
-                throw new InvalidOperationException(Exceptions.NotValidPort);
+                throw new InvalidOperationException(Constants.Exceptions.NotValidPort);
 
             _localPort = (int)value;
         }
@@ -115,7 +115,7 @@ public class WorkloadIntercept
             const string pattern = @"^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$";
 
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Exceptions.NotAnIpAddress);
+                throw new InvalidOperationException(Constants.Exceptions.NotAnIpAddress);
 
             _localAddress = value;
         }
@@ -140,7 +140,7 @@ public class WorkloadIntercept
             const string pattern = "^[a-z][a-z0-9-]{1,62}$";
             
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
 
             _service = value;
         }
@@ -158,7 +158,7 @@ public class WorkloadIntercept
                 return;
             
             if (value is < 1 or > 65535)
-                throw new InvalidOperationException(Exceptions.NotValidPort);
+                throw new InvalidOperationException(Constants.Exceptions.NotValidPort);
 
             _port = value;
         }
@@ -181,7 +181,7 @@ public class WorkloadIntercept
                 !string.IsNullOrWhiteSpace(PathSuffix) ||
                 !string.IsNullOrWhiteSpace(PathEqual) ||
                 !string.IsNullOrWhiteSpace(PathRegexp))
-                throw new InvalidOperationException(Exceptions.GlobalMutuallyExclusive);
+                throw new InvalidOperationException(Constants.Exceptions.GlobalMutuallyExclusive);
 
             _global = value;
         } 
@@ -270,8 +270,8 @@ public class WorkloadIntercept
         {
             new NamedValuePair<string, string>
             {
-                Name = "x-telepresence-intercept-as",
-                Value = Environment.UserName
+                Name = Constants.Defaults.Headers.TelepresenceInterceptAs,
+                Value = "Strayfe" //Environment.UserName
                 // seems to be broken on windows currently, doesn't seem to escape backslashes, will raise to ambassador
                 // "{{ .Telepresence.Username }}"
             }

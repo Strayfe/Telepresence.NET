@@ -41,7 +41,9 @@ Console.WriteLine(intercept.ToString());
 
 await intercept.Start();
 
+// demonstrate that the environment variables were loaded
 Console.WriteLine(Environment.GetEnvironmentVariable("TEST_ENVIRONMENT_VARIABLE"));
+
 Console.WriteLine("Waiting for user input...");
 
 Console.ReadLine();

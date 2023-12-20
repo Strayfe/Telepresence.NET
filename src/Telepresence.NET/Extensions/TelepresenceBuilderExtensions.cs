@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Telepresence.NET.DelegatingHandlers;
 using Telepresence.NET.Options;
+using Telepresence.NET.Services;
 
 namespace Telepresence.NET.Extensions;
 
@@ -28,18 +30,54 @@ public static class TelepresenceBuilderExtensions
     /// </example>
     public static TelepresenceBuilder WithRequestForwarding(
         this TelepresenceBuilder builder,
-        Action<DelegatingHandlerOptions>? configureOptions = null
-        )
+        Action<DelegatingHandlerOptions>? configureOptions = null)
     {
         if (builder is null)
             throw new ArgumentNullException(nameof(builder));
 
-        if (configureOptions is not null)
-            builder.Services.Configure(configureOptions);
+        configureOptions ??= options =>
+        {
+            options.InterceptHeaderNames = new List<string>
+            {
+                Constants.Defaults.Headers.TelepresenceInterceptAs
+            };
+        };
 
+        builder.Services.Configure(configureOptions);
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddTransient<TelepresenceDelegatingHandler>();
 
         return builder;
     }
+
+    public static TelepresenceBuilder WithRestfulApi(this TelepresenceBuilder builder)
+    {
+        if (builder is null)
+            throw new ArgumentNullException(nameof(builder));
+        
+        builder.Services.TryAddScoped<ITelepresenceApiService, TelepresenceApiService>();
+        
+        return builder;
+    }
+
+    // /// <summary>
+    // /// Attempts to automatically handle whether running instances of an application should consume messages from queues.
+    // /// </summary>
+    // /// <remarks>
+    // /// Make sure you have enabled the Telepresence REST api in the cluster to enable this feature.
+    // /// </remarks>
+    // public static TelepresenceBuilder WithMassTransitConsumerHandler(
+    //     this TelepresenceBuilder builder,
+    //     Action<ConsumerHandlerOptions>? configureOptions = null)
+    // {
+    //     if (builder is null)
+    //         throw new ArgumentNullException(nameof(builder));
+    //     
+    //     if (configureOptions is not null)
+    //         builder.Services.Configure(configureOptions);
+    //     
+    //     builder.Services.AddHttpContextAccessor();
+    //     
+    //     return builder;
+    // }
 }

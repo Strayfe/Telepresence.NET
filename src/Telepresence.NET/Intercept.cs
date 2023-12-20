@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Serilog;
-using Serilog.Core;
 using Telepresence.NET.Converters;
 using Telepresence.NET.Models.Intercept;
 using YamlDotNet.Serialization;
@@ -14,7 +13,7 @@ namespace Telepresence.NET;
 /// </summary>
 public class Intercept
 {
-    private readonly Logger _logger;
+    private readonly ILogger _logger;
     
     /// <summary>
     /// An intercept specification and processes to control intercepting workloads in a kubernetes cluster.
@@ -53,7 +52,7 @@ public class Intercept
     /// </summary>
     public string Name
     {
-        get => _name ??= Defaults.Name;
+        get => _name ??= Constants.Defaults.NormalizedEntryAssembly;
         init
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -62,7 +61,7 @@ public class Intercept
             const string pattern = "^[a-zA-Z][a-zA-Z0-9_-]*$";
             
             if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphens);
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
 
             _name = value;
         }
@@ -92,7 +91,7 @@ public class Intercept
                 throw new ArgumentNullException(nameof(Workloads));
 
             if (!value.Any() || value.Count() > 32)
-                throw new InvalidOperationException(Exceptions.InvalidNumberOfWorkloadsDefined);
+                throw new InvalidOperationException(Constants.Exceptions.InvalidNumberOfWorkloadsDefined);
 
             _workloads = value;
         }
@@ -113,7 +112,7 @@ public class Intercept
                 throw new ArgumentNullException(nameof(Handlers));
 
             if (!value.Any() || value.Count() > 64)
-                throw new InvalidOperationException(Exceptions.InvalidNumberOfHandlersDefined);
+                throw new InvalidOperationException(Constants.Exceptions.InvalidNumberOfHandlersDefined);
             
             // assert that each handler has at least one handler
             foreach (var handler in value)
@@ -125,7 +124,7 @@ public class Intercept
                 var mutuallyExclusive = isDocker ^ isScript ^ isExternal;
                 
                 if (!mutuallyExclusive)
-                    throw new InvalidOperationException(Exceptions.MutuallyExclusiveHandlers);
+                    throw new InvalidOperationException(Constants.Exceptions.MutuallyExclusiveHandlers);
             }
             
             _handlers = value;
@@ -189,6 +188,7 @@ public class Intercept
                     return;
                 }
                 
+                // todo: figure out why this reporting when it shouldn't..
                 _logger.Information("Already connected");
             };
             
@@ -251,15 +251,15 @@ public class Intercept
             // known limitation: only works with first of collection for now
             var workload = Workloads.FirstOrDefault();
             if (workload == null)
-                throw new InvalidOperationException(Exceptions.NoWorkloadFound);
+                throw new InvalidOperationException(Constants.Exceptions.NoWorkloadFound);
 
             var intercept = workload.Intercepts?.FirstOrDefault();
             if (intercept == null)
-                throw new InvalidOperationException(Exceptions.NoWorkloadInterceptFound);
+                throw new InvalidOperationException(Constants.Exceptions.NoWorkloadInterceptFound);
 
             var handler = Handlers.FirstOrDefault();
             if (handler == null)
-                throw new InvalidOperationException(Exceptions.NoHandlerFound);
+                throw new InvalidOperationException(Constants.Exceptions.NoHandlerFound);
 
             await handler.Handle(_interceptProcess, linkedTokenSource.Token);
             

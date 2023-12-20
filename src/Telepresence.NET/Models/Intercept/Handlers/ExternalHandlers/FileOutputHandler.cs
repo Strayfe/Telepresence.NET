@@ -14,7 +14,7 @@ internal class FileOutputHandler : IExternalHandlerStrategy
         await WaitForOutputFile(OutputPath, cancellationToken);
         
         if (!File.Exists(OutputPath))
-            throw new InvalidOperationException(Exceptions.UnableToStartIntercept);
+            throw new InvalidOperationException(Constants.Exceptions.UnableToStartIntercept);
         
         await OutputLoader.LoadEnvironmentFromFile(OutputPath, cancellationToken);
         

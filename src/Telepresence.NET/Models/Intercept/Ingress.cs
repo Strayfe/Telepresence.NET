@@ -24,7 +24,7 @@ public class Ingress
         init
         {
             if (value is < 1 or > 65535)
-                throw new InvalidOperationException(Exceptions.NotValidPort);
+                throw new InvalidOperationException(Constants.Exceptions.NotValidPort);
 
             _port = value;
         }

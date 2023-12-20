@@ -37,7 +37,7 @@ public class PreviewUrl
             const string pattern = "^[a-zA-Z][a-zA-Z0-9._-]*$";
 
             if (value.Any(header => !Regex.IsMatch(header.Key, pattern)))
-                throw new InvalidOperationException(Exceptions.AlphaNumericWithHyphensUnderscoresDots);
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphensUnderscoresDots);
             
             _extraHeaders = value;
         }
