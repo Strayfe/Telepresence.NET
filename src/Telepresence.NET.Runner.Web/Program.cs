@@ -43,7 +43,7 @@ var intercept = new Intercept
 Console.WriteLine(intercept.ToString());
 
 // needs to be run before the web application is built if environment variables need to be loaded from the cluster
-await intercept.Start();
+await intercept.Start(License.Community);
 
 // demonstrate that the environment variables were loaded
 Console.WriteLine(Environment.GetEnvironmentVariable("TEST_ENVIRONMENT_VARIABLE"));

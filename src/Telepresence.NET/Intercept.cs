@@ -1,22 +1,25 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Serilog;
 using Telepresence.NET.Converters;
+using Telepresence.NET.Models;
 using Telepresence.NET.Models.Intercept;
+using Telepresence.NET.Models.Intercept.Handlers;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
 namespace Telepresence.NET;
 
 /// <summary>
-/// An intercept specification and processes to control intercepting workloads in a kubernetes cluster.
+/// An intercept and processes to control intercepting workloads in a kubernetes cluster.
 /// </summary>
 public class Intercept
 {
     private readonly ILogger _logger;
     
     /// <summary>
-    /// An intercept specification and processes to control intercepting workloads in a kubernetes cluster.
+    /// An intercept and processes to control intercepting workloads in a kubernetes cluster.
     /// </summary>
     public Intercept()
     {
@@ -24,113 +27,169 @@ public class Intercept
             .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}][telepresence] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
     }
-    
-    /// <summary>
-    /// An intercept specification and processes to control intercepting workloads in a kubernetes cluster.
-    /// </summary>
-    public Intercept(string name)
+
+    public Intercept(InterceptSpecification interceptSpecification)
     {
         _logger = new LoggerConfiguration()
             .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}][telepresence] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
         
-        Name = name;
+        // todo: do something with the intercept specification
     }
 
     private string? _temporaryDirectory;
     private string? _interceptSpecificationPath;
     private bool _isConnected;
-    private string? _name;
-    // todo: private IEnumerable<Prerequisites> _prerequisites;
-    private Connection? _connection;
-    private IEnumerable<Workload>? _workloads;
-    private IEnumerable<Handler>? _handlers;
     private Process? _interceptProcess;
-
+    private readonly Collection<string> _arguments = [];
+    
     /// <summary>
-    /// A name to give to the specification.
+    /// Local address to forward to, Only accepts IP address as a value. e.g. '10.0.0.2' (default "127.0.0.1")
     /// </summary>
-    public string Name
+    public string? Address
     {
-        get => _name ??= Constants.Defaults.NormalizedEntryAssembly;
+        get => _arguments.FirstOrDefault(x => x.Contains("--address"));
         init
         {
-            if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentNullException(nameof(Name));
-
-            const string pattern = "^[a-zA-Z][a-zA-Z0-9_-]*$";
+            if (value is null)
+                return;
             
-            if (!Regex.IsMatch(value, pattern))
-                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
-
-            _name = value;
+            // todo: sanity check for well-formed IP addresses
+            _arguments.Add($"--address {value}"); 
         }
-    }
-
-    /// <summary>
-    /// Connection properties to use when Telepresence connects to the cluster.
-    /// </summary>
-    public Connection? Connection
-    {
-        get => _connection ??= new Connection();
-        init => _connection = value ?? throw new ArgumentNullException(nameof(Connection));
     }
     
     /// <summary>
-    /// Remote workloads that are intercepted, keyed by workload name.
+    /// Provide very detailed info about the intercept when used together with 
     /// </summary>
-    public IEnumerable<Workload> Workloads
-    {
-        get => _workloads ??= new List<Workload>
-        {
-            new() { Name = _name }
-        };
-        init
-        {
-            if (value == null)
-                throw new ArgumentNullException(nameof(Workloads));
-
-            if (!value.Any() || value.Count() > 32)
-                throw new InvalidOperationException(Constants.Exceptions.InvalidNumberOfWorkloadsDefined);
-
-            _workloads = value;
-        }
-    }
-
-    /// <summary>
-    /// Local services running on the host machine that handle the intercepted services requests.
-    /// </summary>
-    public IEnumerable<Handler> Handlers
-    {
-        get => _handlers ??= new List<Handler>
-        {
-            new() { Name = _name }
-        };
-        init
-        {
-            if (value == null)
-                throw new ArgumentNullException(nameof(Handlers));
-
-            if (!value.Any() || value.Count() > 64)
-                throw new InvalidOperationException(Constants.Exceptions.InvalidNumberOfHandlersDefined);
-            
-            // assert that each handler has at least one handler
-            foreach (var handler in value)
-            {
-                var isDocker = handler.Docker != null;
-                var isScript = handler.Script != null;
-                var isExternal = handler.External != null;
-
-                var mutuallyExclusive = isDocker ^ isScript ^ isExternal;
-                
-                if (!mutuallyExclusive)
-                    throw new InvalidOperationException(Constants.Exceptions.MutuallyExclusiveHandlers);
-            }
-            
-            _handlers = value;
-        }
-    }
+    public OutputFormat? DetailedOutput { get; init; }
     
+    /// <summary>
+    /// Build a Docker container from the given docker-context (path or URL), and run it with intercepted environment and volume
+    /// mounts, by passing arguments after -- to 'docker run', e.g. '--docker-build /path/to/docker/context -- -it IMAGE /bin/bash'
+    /// </summary>
+    public string? DockerBuild { get; init; }
+    
+    /// <summary>
+    /// Options to docker-build in the form of key value pairs.
+    /// </summary>
+    public IEnumerable<KeyValuePair<string, string>>? DockerBuildOptions { get; init; }
+    
+    /// <summary>
+    /// Like <see cref="DockerBuild"/>, but allows a debugger to run inside the container with relaxed security
+    /// </summary>
+    public string? DockerDebug { get; init; }
+    
+    /// <summary>
+    /// The volume mount point in docker. Defaults to same as "<see cref="Mount"/>
+    /// </summary>
+    public string? DockerMount { get; init; }
+    
+    /// <summary>
+    /// Run a Docker container with intercepted environment, volume mount, by passing arguments after -- to 'docker run', e.g.
+    /// '--docker-run -- -it --rm ubuntu:20.04 /bin/bash'
+    /// </summary>
+    public bool? DockerRun { get; init; }
+    
+    /// <summary>
+    /// Also emit the remote environment to an env file in Docker Compose format. See https://docs.docker.com/compose/env-file/ for
+    /// more information on the limitations of this format.
+    /// </summary>
+    public string? EnvFile { get; init; }
+    
+    /// <summary>
+    /// Also emit the remote environment to a file as a JSON blob.
+    /// </summary>
+    public string? EnvJson { get; init; }
+    
+    /// <summary>
+    /// Only intercept traffic that matches this "HTTP2_HEADER=REGEXP" specifier. Instead of a "--http-header=HTTP2_HEADER=REGEXP"
+    /// pair, you may say "--http-header=auto", which will automatically select a unique matcher for your intercept. If this flag is
+    /// given multiple times, then it will only intercept traffic that matches *all* of the specifiers. (default [auto])
+    /// </summary>
+    public IEnumerable<KeyValuePair<string, string>>? HttpHeader { get; init; }
+    
+    /// <summary>
+    /// Associates key=value pairs with the intercept that can later be retrieved using the Telepresence API service. (implies
+    /// "--mechanism=http")
+    /// </summary>
+    public IEnumerable<KeyValuePair<string, string>>? HttpMeta { get; init; }
+    
+    /// <summary>
+    /// Only intercept traffic with paths that are exactly equal to this path once the query string is removed. (implies
+    /// "--mechanism=http")
+    /// </summary>
+    public string? HttpPathEqual { get; init; }
+    
+    /// <summary>
+    /// Only intercept traffic with paths beginning with this prefix. (implies "--mechanism=http")
+    /// </summary>
+    public string? HttpPathPrefix { get; init; }
+    
+    /// <summary>
+    /// Only intercept traffic with paths that are entirely matched by this regular expression once the query string is removed.
+    /// (implies "--mechanism=http")
+    /// </summary>
+    public string? HttpPathRegexp { get; init; }
+    
+    /// <summary>
+    /// Use plaintext format when communicating with the interceptor process on the local workstation. Only meaningful when
+    /// intercepting workloads annotated with "getambassador.io/inject-originating-tls-secret" to prevent that TLS is used during
+    /// intercepts. (implies "--mechanism=http")
+    /// </summary>
+    public bool? HttpPlainText { get; init; }
+    
+    /// <summary>
+    /// The ingress hostname.
+    /// </summary>
+    public string? IngressHost { get; init; }
+    
+    /// <summary>
+    /// The L5 hostname. Defaults to the ingress-host value
+    /// </summary>
+    public string? IngressL5Host { get; init; }
+    
+    /// <summary>
+    /// The ingress port.
+    /// </summary>
+    public int? IngressPort { get; init; }
+    
+    /// <summary>
+    /// Determines if TLS is used.
+    /// </summary>
+    public bool? IngressTls { get; init; }
+    
+    /// <summary>
+    /// Do not mount remote directories. Instead, expose this port on localhost to an external mounter
+    /// </summary>
+    public ushort? LocalMountPort { get; init; }
+    
+    /// <summary>
+    /// Which extension mechanism to use (default tcp)
+    /// </summary>
+    public Mechanism? Mechanism { get; init; }
+    
+    /// <summary>
+    /// The absolute path for the root directory where volumes will be mounted, $TELEPRESENCE_ROOT. Use "true" to have Telepresence
+    /// pick a random mount point (default). Use "false" to disable filesystem mounting entirely. (default "true")
+    /// </summary>
+    public string? Mount { get; init; }
+    
+    /// <summary>
+    /// Local port to forward to. If intercepting a service with multiple ports, use <local port>:<svcPortIdentifier>, where the
+    /// identifier is the port name or port number. With --docker-run and a daemon that doesn't run in docker', use <local
+    /// port>:<container port> or <local port>:<container port>:<svcPortIdentifier>.
+    /// </summary>
+    public string? Port { get; init; }
+    public string? PreviewUrl { get; init; }
+    public string? PreviewUrlAddRequestHeaders { get; init; }
+    public string? PreviewUrlBanner { get; init; }
+    public string? Replace { get; init; }
+    public string? Service { get; init; }
+    public string? ToPod { get; init; }
+    public string? UseSavedIntercept { get; init; }
+    public string? Workload { get; init; }
+
     /// <summary>
     /// Connect to the traffic manager in the cluster.
     /// Automatically done if not already connected.
@@ -141,8 +200,8 @@ public class Intercept
             return;
         
         // todo: configure a timeout 
-        // var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        // linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
+        var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
         
         _logger.Information("Attempting to connect to cluster");
         
@@ -203,7 +262,7 @@ public class Intercept
             connectProcess.BeginOutputReadLine();
             connectProcess.BeginErrorReadLine();
             
-            await connectProcess.WaitForExitAsync(cancellationToken);
+            await connectProcess.WaitForExitAsync(linkedTokenSource.Token);
 
             _isConnected = true;
         }
@@ -216,11 +275,11 @@ public class Intercept
     /// <summary>
     /// Start the intercept.
     /// </summary>
-    public async Task Start(CancellationToken cancellationToken = default)
+    // todo: try to automatically determine the license rather than asking the user to tell us
+    public async Task Start(License license, CancellationToken cancellationToken = default)
     {
         await Connect(cancellationToken);
         await Leave(cancellationToken);
-        await CreateInterceptSpecification(cancellationToken);
         
         var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
@@ -229,24 +288,18 @@ public class Intercept
 
         try
         {
-            _interceptProcess = new Process
+            switch (license)
             {
-                StartInfo =
-                {
-                    FileName = "telepresence",
-                    ArgumentList =
-                    {
-                        "intercept",
-                        "run",
-                        $"{_interceptSpecificationPath}"
-                    },
-                    WorkingDirectory = Environment.CurrentDirectory,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                }
-            };
+                case License.Community:
+                    _interceptProcess = CreateInterceptCommandLineInterfaceProcess();
+                    break;
+                case License.Developer:
+                case License.Enterprise:
+                    _interceptProcess = await CreateInterceptSpecificationProcess(cancellationToken);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(license), license, null);
+            }
             
             // known limitation: only works with first of collection for now
             var workload = Workloads.FirstOrDefault();
@@ -283,6 +336,9 @@ public class Intercept
     /// </summary>
     public async Task Leave(CancellationToken cancellationToken = default)
     {
+        var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
+        
         var workload = Workloads.FirstOrDefault();
         var intercept = workload?.Intercepts?.FirstOrDefault();
         
@@ -331,7 +387,7 @@ public class Intercept
             leaveIntercept.BeginOutputReadLine();
             leaveIntercept.BeginErrorReadLine();
 
-            await leaveIntercept.WaitForExitAsync(cancellationToken);
+            await leaveIntercept.WaitForExitAsync(linkedTokenSource.Token);
         }
         catch (Exception ex)
         {
@@ -358,33 +414,58 @@ public class Intercept
             Directory.Delete(_temporaryDirectory, true);
     }
     
-    /// <summary>
-    /// Parse the intercept specification as YAML.
-    /// Falls back to the name of the object in event of failure.
-    /// </summary>
-    public override string? ToString()
+    private Process CreateInterceptCommandLineInterfaceProcess()
     {
-        var result = base.ToString();
-
-        try
+        var startInfo = new ProcessStartInfo
         {
-            var serializer = new SerializerBuilder()
-                .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitDefaults)
-                .WithTypeConverter(new YamlStringEnumConverter())
-                .WithNamingConvention(CamelCaseNamingConvention.Instance)
-                .Build();
+            FileName = "telepresence",
+            ArgumentList =
+            {
+                "intercept",
+            },
+            WorkingDirectory = Environment.CurrentDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
 
-            result = serializer.Serialize(this);
-        }
-        catch (Exception)
+        foreach (var argument in _arguments)
         {
-            // ignored
+            startInfo.ArgumentList.Add(argument);
         }
-
-        return result;
+        
+        return new Process
+        {
+            StartInfo = startInfo
+        };
     }
-    
-    private Task CreateInterceptSpecification(CancellationToken cancellationToken = default)
+
+    private async Task<Process> CreateInterceptSpecificationProcess(CancellationToken cancellationToken = default)
+    {
+        await CreateInterceptSpecificationFile(cancellationToken);
+        
+        return new Process
+        {
+            StartInfo =
+            {
+                FileName = "telepresence",
+                ArgumentList =
+                {
+                    "intercept",
+                    "run",
+                    $"{_interceptSpecificationPath}"
+                },
+                WorkingDirectory = Environment.CurrentDirectory,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            }
+        };
+    }
+
+    private Task CreateInterceptSpecificationFile(CancellationToken cancellationToken = default)
     {
         _temporaryDirectory = Path.Combine(Path.GetTempPath(), nameof(Telepresence).ToLowerInvariant(), Name);
         _interceptSpecificationPath = Path.Combine(_temporaryDirectory, $"{Name}-intercept-specification.yaml");
