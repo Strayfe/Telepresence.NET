@@ -22,6 +22,7 @@ This results in no longer needing to manually handle each step, increasing produ
 As this product is still in it's infancy, there are some limitations to it's usage and it is currently slightly
 opinionated to the way we operate in my workplace, however, I will be working to abstract the product as much as possible.
 
+- only supports premium tiers due to using intercept specs to build up the connection, an oversight from my subscription, will address soon
 - Opinionated conventions
 - Only works with the first element of collections of handlers, workloads and intercepts
 - Connection does not have an implicit or default, this will be coming soon and will be determined automatically from \

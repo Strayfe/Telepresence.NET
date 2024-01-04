@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Telepresence.NET;
 using Telepresence.NET.Extensions;
 using Telepresence.NET.Models;
@@ -55,7 +56,7 @@ builder.Services.AddTelepresence()
 
 var app = builder.Build();
 
-app.MapGet("/", async (ITelepresenceApiService apiService) =>
+app.MapGet("/", async ([FromServices] ITelepresenceApiService apiService) =>
 {
     var interceptHeaders = new Dictionary<string, string>
     {

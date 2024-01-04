@@ -54,8 +54,9 @@ public static class TelepresenceBuilderExtensions
     {
         if (builder is null)
             throw new ArgumentNullException(nameof(builder));
-        
-        builder.Services.TryAddScoped<ITelepresenceApiService, TelepresenceApiService>();
+
+        builder.Services.AddHttpClient();
+        builder.Services.TryAddTransient<ITelepresenceApiService, TelepresenceApiService>();
         
         return builder;
     }
