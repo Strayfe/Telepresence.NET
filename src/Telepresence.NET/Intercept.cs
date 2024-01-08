@@ -28,6 +28,9 @@ public class Intercept
             .CreateLogger();
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     public Intercept(InterceptSpecification interceptSpecification)
     {
         _logger = new LoggerConfiguration()
@@ -41,39 +44,100 @@ public class Intercept
     private string? _interceptSpecificationPath;
     private bool _isConnected;
     private Process? _interceptProcess;
-    private readonly Collection<string> _arguments = [];
+    private readonly Collection<KeyValuePair<string, string>> _arguments = [];
+
+    private string? _name;
+    /// <summary>
+    /// 
+    /// </summary>
+    public string? Name
+    {
+        get => _name ??= Constants.Defaults.NormalizedEntryAssembly;
+        init
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentNullException(nameof(Name));
+    
+            const string pattern = "^[a-zA-Z][a-zA-Z0-9_-]*$";
+            
+            if (!Regex.IsMatch(value, pattern))
+                throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
+    
+            _name = value;
+        }
+    }
     
     /// <summary>
     /// Local address to forward to, Only accepts IP address as a value. e.g. '10.0.0.2' (default "127.0.0.1")
     /// </summary>
     public string? Address
     {
-        get => _arguments.FirstOrDefault(x => x.Contains("--address"));
+        get => _arguments.FirstOrDefault(x => x.Key == "--address").Value;
         init
         {
-            if (value is null)
+            if (string.IsNullOrWhiteSpace(value))
                 return;
             
-            // todo: sanity check for well-formed IP addresses
-            _arguments.Add($"--address {value}"); 
+            const string pattern = @"^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$";
+            
+            if (!Regex.IsMatch(value, pattern))
+                throw new InvalidOperationException(Constants.Exceptions.NotAnIpAddress);
+            
+            _arguments.Add(new KeyValuePair<string, string>("--address", value)); 
         }
     }
-    
+
     /// <summary>
     /// Provide very detailed info about the intercept when used together with 
     /// </summary>
-    public OutputFormat? DetailedOutput { get; init; }
-    
+    public OutputFormat? DetailedOutput
+    {
+        get => Enum.Parse<OutputFormat>(_arguments.FirstOrDefault(x => x.Key == "--detailed-output").Value);
+        init
+        {
+            if (!value.HasValue)
+                throw new ArgumentNullException(nameof(DetailedOutput));
+            
+            _arguments.Add(new KeyValuePair<string, string>("--detailed-output", value.ToString()));
+        }
+    }
+
     /// <summary>
     /// Build a Docker container from the given docker-context (path or URL), and run it with intercepted environment and volume
     /// mounts, by passing arguments after -- to 'docker run', e.g. '--docker-build /path/to/docker/context -- -it IMAGE /bin/bash'
     /// </summary>
-    public string? DockerBuild { get; init; }
-    
+    public string? DockerBuild
+    {
+        get => _arguments.FirstOrDefault(x => x.Key == "--docker-build").Value;
+        init
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentNullException(nameof(DockerBuild));
+            
+            _arguments.Add(new KeyValuePair<string, string>("--docker-build", value));
+        }
+    }
+
     /// <summary>
     /// Options to docker-build in the form of key value pairs.
     /// </summary>
-    public IEnumerable<KeyValuePair<string, string>>? DockerBuildOptions { get; init; }
+    public IEnumerable<KeyValuePair<string, string>>? DockerBuildOptions
+    {
+        get => _arguments.Where(x => x.Key == "--docker-build-opt");
+        init
+        {
+            if (value is null)
+                throw new ArgumentNullException(nameof(DockerBuildOptions));
+
+            if (DockerBuild is null)
+                throw new ArgumentNullException(nameof(DockerBuild));
+
+            foreach (var val in value)
+            {
+                _arguments.Add(new KeyValuePair<string, string>("--docker-build-opt", $"{val.Key}={val.Value}"));
+            }
+        }
+    }
     
     /// <summary>
     /// Like <see cref="DockerBuild"/>, but allows a debugger to run inside the container with relaxed security
@@ -181,13 +245,46 @@ public class Intercept
     /// port>:<container port> or <local port>:<container port>:<svcPortIdentifier>.
     /// </summary>
     public string? Port { get; init; }
-    public string? PreviewUrl { get; init; }
-    public string? PreviewUrlAddRequestHeaders { get; init; }
-    public string? PreviewUrlBanner { get; init; }
-    public string? Replace { get; init; }
+    
+    /// <summary>
+    /// Generate an edgestack.me preview domain for this intercept. (default true)
+    /// </summary>
+    public bool? PreviewUrl { get; init; }
+    
+    /// <summary>
+    /// Additional headers in key1=value1,key2=value2 pairs injected in every preview page request (default [])
+    /// </summary>
+    public IEnumerable<KeyValuePair<string, string>>? PreviewUrlAddRequestHeaders { get; init; }
+    
+    /// <summary>
+    /// Display banner on preview page (default true)
+    /// </summary>
+    public bool? PreviewUrlBanner { get; init; }
+    
+    /// <summary>
+    /// Whether to replace the running container entirely. If false, the app container will keep running.
+    /// </summary>
+    public bool? Replace { get; init; }
+    
+    /// <summary>
+    /// Name of service to intercept. If not provided, we will try to auto-detect one
+    /// </summary>
     public string? Service { get; init; }
+    
+    /// <summary>
+    /// An additional port to forward from the intercepted pod, will be made available at localhost:PORT Use this to, for example, access proxy/helper sidecars in the intercepted pod.
+    /// The default protocol is TCP. Use <port>/UDP for UDP ports
+    /// </summary>
     public string? ToPod { get; init; }
+    
+    /// <summary>
+    /// Use a saved intercept.
+    /// </summary>
     public string? UseSavedIntercept { get; init; }
+    
+    /// <summary>
+    /// Name of workload (Deployment, ReplicaSet) to intercept, if different from <name>
+    /// </summary>
     public string? Workload { get; init; }
 
     /// <summary>
