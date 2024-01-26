@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>default</LangVersion>
+        <Version>0.3.0</Version>
+        <Title>Telepresence.NET</Title>
+        <Description>This package serves as a convenient wrapper around the Telepresence CLI and its corresponding RESTful API.</Description>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);1591</NoWarn>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <None Include="..\..\README.md" Pack="true" PackagePath=""/>
+        <None Include="..\..\LICENSE" Pack="true" PackagePath=""/>
+    </ItemGroup>
+    
+    <!-- https://learn.microsoft.com/en-us/aspnet/core/fundamentals/target-aspnetcore -->
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="KubernetesClient" Version="12.0.16" />
+        <PackageReference Include="MassTransit" Version="8.1.2" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+        <PackageReference Include="Serilog" Version="3.1.1" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+        <PackageReference Include="YamlDotNet" Version="13.7.1" />
+    </ItemGroup>
+
+</Project>
