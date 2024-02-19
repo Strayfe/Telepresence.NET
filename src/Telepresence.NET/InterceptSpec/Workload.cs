@@ -36,7 +36,7 @@ internal class Workload
 
             if (value.Length > 64)
                 throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
-            
+
             const string pattern = "^[a-z][a-z0-9-]*$";
 
             if (!Regex.IsMatch(value, pattern))

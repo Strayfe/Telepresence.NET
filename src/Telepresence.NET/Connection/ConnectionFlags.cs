@@ -38,7 +38,7 @@ public partial class Connection
         }
     }
     private readonly IEnumerable<string>? _allowConflictingSubnets;
-    
+
     /// <summary>
     /// Additional list of CIDR to proxy.
     /// </summary>
@@ -98,7 +98,7 @@ public partial class Connection
         }
     }
     private readonly bool? _docker;
-    
+
     /// <summary>
     /// Ports that a containerized daemon will expose. See docker run -p for more info.
     /// </summary>
@@ -131,7 +131,7 @@ public partial class Connection
         }
     }
     private readonly IEnumerable<string>? _expose;
-    
+
     /// <summary>
     /// Hostname used by a containerized daemon.
     /// </summary>
@@ -159,7 +159,7 @@ public partial class Connection
         }
     }
     private readonly string? _hostname;
-    
+
     /// <summary>
     /// The namespace where the traffic manager is to be found.
     /// </summary>
@@ -174,10 +174,10 @@ public partial class Connection
                 _arguments.Remove(nameof(ManagerNamespace));
                 return;
             }
-            
+
             if (value.Length > 64)
                 throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
-        
+
             const string pattern = @"^[a-z0-9][a-z0-9-]*$|\{\{";
 
             if (!Regex.IsMatch(value, pattern))
@@ -195,7 +195,7 @@ public partial class Connection
         }
     }
     private readonly string? _managerNamespace;
-    
+
     /// <summary>
     /// The namespaces that Telepresence will be concerned with.
     /// </summary>
@@ -210,12 +210,12 @@ public partial class Connection
                 _arguments.Remove(nameof(MappedNamespaces));
                 return;
             }
-            
+
             if (value.Any(@namespace => @namespace.Length > 64))
                 throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
 
             const string pattern = @"^[a-z0-9][a-z0-9-]$|\{\{";
-        
+
             if (value.Any(@namespace => !Regex.IsMatch(@namespace, pattern)))
                 throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
 
@@ -233,7 +233,7 @@ public partial class Connection
         }
     }
     private readonly IEnumerable<string>? _mappedNamespaces;
-    
+
     /// <summary>
     /// The name to use for this connection.
     /// Defaults to '<see cref="Context">&lt;context&gt;</see>-<see cref="Namespace">&lt;namespace&gt;</see>'.
@@ -248,7 +248,7 @@ public partial class Connection
 
             if (value.Length > 64)
                 throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
-        
+
             const string pattern = "^[a-z][a-z0-9-]*$";
 
             if (!Regex.IsMatch(value, pattern))
@@ -266,7 +266,7 @@ public partial class Connection
         }
     }
     private string? _name;
-    
+
     /// <summary>
     /// The namespace that this connection is bound to.
     /// Defaults to the default appointed by the context.
@@ -281,7 +281,7 @@ public partial class Connection
 
             if (value.Length > 64)
                 throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
-        
+
             const string pattern = @"^[a-z0-9][a-z0-9-]*$|\{\{";
 
             if (!Regex.IsMatch(value, pattern))
@@ -299,7 +299,7 @@ public partial class Connection
         }
     }
     private string? _namespace;
-    
+
     /// <summary>
     /// List of CIDR to never proxy.
     /// </summary>

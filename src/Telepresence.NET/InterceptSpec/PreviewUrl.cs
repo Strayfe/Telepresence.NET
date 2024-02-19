@@ -8,7 +8,7 @@ namespace Telepresence.NET.InterceptSpec;
 internal class PreviewUrl
 {
     private readonly IDictionary<string, string>? _extraHeaders;
-    
+
     /// <summary>
     /// Enable preview URL.
     /// Default is true.
@@ -38,7 +38,7 @@ internal class PreviewUrl
 
             if (value.Any(header => !Regex.IsMatch(header.Key, pattern)))
                 throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphensUnderscoresDots);
-            
+
             _extraHeaders = value;
         }
     }

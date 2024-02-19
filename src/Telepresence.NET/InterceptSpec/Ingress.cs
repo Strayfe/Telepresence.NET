@@ -3,12 +3,12 @@ namespace Telepresence.NET.InterceptSpec;
 internal class Ingress
 {
     private readonly int? _port;
-    
+
     /// <summary>
     /// The ingress hostname.
     /// </summary>
     public string? Host { get; init; }
-    
+
     /// <summary>
     /// The ingress L5 Hostname.
     /// Defaults to ingressHost.

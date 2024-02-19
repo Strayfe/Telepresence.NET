@@ -29,18 +29,18 @@ internal sealed class Connection
     /// Username to impersonate for the operation.
     /// </summary>
     public string? As { get; init; }
-    
+
     /// <summary>
     /// Groups to impersonate for the operation.
     /// </summary>
     public IEnumerable<string>? AsGroups { get; init; }
-    
+
     /// <summary>
     /// UID to impersonate for the operation.
     /// </summary>
     // ReSharper disable once InconsistentNaming
     public string? AsUID { get; init; }
-    
+
     /// <summary>
     /// The name of the kubeconfig cluster to use.
     /// </summary>
@@ -52,7 +52,7 @@ internal sealed class Connection
     public string Context { get; init; } = KubernetesClientConfiguration
         .BuildConfigFromConfigFile()
         .CurrentContext;
-    
+
     /// <summary>
     /// The name of the kubeconfig user to use.
     /// </summary>
@@ -75,7 +75,7 @@ internal sealed class Connection
 
             if (value.Length > 64)
                 throw new InvalidOperationException(Constants.Exceptions.CantExceed64Characters);
-            
+
             const string pattern = "^[a-z][a-z0-9-]*$";
 
             if (!Regex.IsMatch(value, pattern))
@@ -96,7 +96,7 @@ internal sealed class Connection
         {
             if (string.IsNullOrWhiteSpace(value))
                 throw new ArgumentNullException(nameof(Namespace));
-            
+
             const string pattern = "^[a-z0-9][a-z0-9-]{1,62}$";
 
             if (!Regex.IsMatch(value, pattern))
@@ -116,7 +116,7 @@ internal sealed class Connection
         {
             if (string.IsNullOrWhiteSpace(value))
                 throw new ArgumentNullException(nameof(ManagerNamespace));
-            
+
             const string pattern = "^[a-z0-9][a-z0-9-]{1,62}$";
 
             if (!Regex.IsMatch(value, pattern))
@@ -138,7 +138,7 @@ internal sealed class Connection
                 throw new ArgumentNullException(nameof(MappedNamespaces));
 
             const string pattern = "^[a-z0-9][a-z0-9-]{1,62}$";
-            
+
             if (value.Any(@namespace => !Regex.IsMatch(@namespace, pattern)))
                 throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
 
@@ -150,7 +150,7 @@ internal sealed class Connection
     /// Additional list of CIDR to proxy.
     /// </summary>
     public IEnumerable<string>? AlsoProxy { get; init; }
-    
+
     /// <summary>
     /// List of CIDR to never proxy.
     /// </summary>

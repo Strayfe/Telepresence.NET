@@ -13,23 +13,23 @@ internal class StandardOutputHandler : IExternalHandlerStrategy
     public async Task Handle(Process process, CancellationToken cancellationToken = default)
     {
         var outputWaiter = new TaskCompletionSource<bool>();
-            
+
         process.OutputDataReceived += async (sender, args) =>
         {
             if (string.IsNullOrWhiteSpace(args.Data))
                 return;
-        
+
             if (args.Data.StartsWith('{') && args.Data.Contains("\"environment\":"))
             {
                 var outputString = args.Data[..(args.Data.LastIndexOf('}') + 1)];
-                
+
                 await OutputLoader.LoadEnvironmentFromString(outputString, cancellationToken);
-                
+
                 outputWaiter.SetResult(true);
-                
+
                 return;
             }
-            
+
             _logger.Information(args.Data);
         };
 
@@ -40,7 +40,7 @@ internal class StandardOutputHandler : IExternalHandlerStrategy
         };
 
         process.Start();
-            
+
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 

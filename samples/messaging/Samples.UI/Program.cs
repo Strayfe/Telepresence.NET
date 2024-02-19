@@ -2,7 +2,7 @@ using System.Reflection;
 using MassTransit;
 using MassTransit.Metadata;
 using Samples.UI;
-using Telepresence.NET.Messages.MassTransit.Filters;
+using Telepresence.NET.HeaderPropagation.MassTransit.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 

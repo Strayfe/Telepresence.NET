@@ -1,11 +1,11 @@
 using Newtonsoft.Json;
-using Telepresence.NET.Models.Output;
+using Telepresence.NET.InterceptSpec.Models.Output;
 
 namespace Telepresence.NET.InterceptSpec;
 
 internal static class OutputLoader
 {
-    public static async Task LoadEnvironmentFromString(string outputString, CancellationToken cancellationToken = default) => 
+    public static async Task LoadEnvironmentFromString(string outputString, CancellationToken cancellationToken = default) =>
         await ProcessJsonOutput(outputString, cancellationToken);
 
     /// <summary>
@@ -15,9 +15,9 @@ internal static class OutputLoader
     {
         if (!File.Exists(filePath))
             return;
-        
+
         var extension = Path.GetExtension(filePath);
-        
+
         var processors = new Dictionary<string, Func<string, CancellationToken, Task>>(StringComparer.OrdinalIgnoreCase)
         {
             [".json"] = ProcessJson,
@@ -25,18 +25,18 @@ internal static class OutputLoader
             [".yaml"] = ProcessYaml,
             [".env"] = ProcessDotEnv,
         };
-        
-        if (processors.TryGetValue(extension, out var processor)) 
+
+        if (processors.TryGetValue(extension, out var processor))
             await processor(filePath, cancellationToken);
     }
-    
+
     private static async Task ProcessJsonOutput(string output, CancellationToken cancellationToken = default)
     {
         var interceptOutput = JsonConvert.DeserializeObject<InterceptOutput>(output);
 
         if (interceptOutput == null)
             return;
-        
+
         // get environment from individual intercepts (limited to first for now)
         var firstIntercept = interceptOutput.Intercepts?.FirstOrDefault();
 
@@ -47,17 +47,17 @@ internal static class OutputLoader
         if (interceptOutput.Environment is { Count: > 0 })
             SetEnvironmentVariables(interceptOutput.Environment);
     }
-    
+
     private static async Task ProcessJson(string filePath, CancellationToken cancellationToken = default)
     {
         await WaitForRead(filePath, cancellationToken);
-        
+
         var json = await File.ReadAllTextAsync(filePath, cancellationToken);
         var interceptOutput = JsonConvert.DeserializeObject<InterceptOutput>(json);
 
         if (interceptOutput == null)
             return;
-        
+
         // get environment from individual intercepts (limited to first for now)
         var firstIntercept = interceptOutput.Intercepts?.FirstOrDefault();
 
@@ -78,14 +78,14 @@ internal static class OutputLoader
     private static Task ProcessDotEnv(string filePath, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
-        
+
         foreach (var line in File.ReadAllLines(filePath))
         {
             var parts = line.Split('=', StringSplitOptions.RemoveEmptyEntries);
-    
+
             if (parts.Length != 2)
                 continue;
-    
+
             Environment.SetEnvironmentVariable(parts[0], parts[1]);
         }
 
@@ -104,10 +104,10 @@ internal static class OutputLoader
             catch (IOException)
             {
                 // loop until file becomes readable with sharable lock or times out
-            } 
+            }
         }
     }
-    
+
     private static void SetEnvironmentVariables(IEnumerable<KeyValuePair<string, string>> environments)
     {
         foreach (var environment in environments)

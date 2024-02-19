@@ -11,7 +11,7 @@
 // {
 //     private readonly ITestOutputHelper _testOutputHelper;
 //
-//     public InterceptSpecification(ITestOutputHelper testOutputHelper) => 
+//     public InterceptSpecification(ITestOutputHelper testOutputHelper) =>
 //         _testOutputHelper = testOutputHelper;
 //
 //     /// <summary>

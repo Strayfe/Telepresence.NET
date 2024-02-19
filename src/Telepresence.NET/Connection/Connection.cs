@@ -44,9 +44,6 @@ public partial class Connection
         if (_connected)
             return;
 
-        var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
-
         _logger.Information("Attempting to connect");
 
         try
@@ -72,10 +69,10 @@ public partial class Connection
                 connectProcess.StartInfo.ArgumentList.Add(argument);
 
             _logger.Information($"executing command: telepresence {string.Join(" ", connectProcess.StartInfo.ArgumentList)}");
-            
+
             connectProcess.OutputDataReceived += (sender, args) =>
             {
-                if (!string.IsNullOrWhiteSpace(args.Data)) 
+                if (!string.IsNullOrWhiteSpace(args.Data))
                     _logger.Information(args.Data);
             };
 
@@ -89,8 +86,8 @@ public partial class Connection
 
             connectProcess.BeginOutputReadLine();
             connectProcess.BeginErrorReadLine();
-            
-            await connectProcess.WaitForExitAsync(linkedTokenSource.Token);
+
+            await connectProcess.WaitForExitAsync(cancellationToken);
 
             _connected = true;
         }
@@ -104,14 +101,14 @@ public partial class Connection
     /// Disconnect from the cluster without stopping the daemons.
     /// </summary>
     /// <param name="cancellationToken"></param>
-    public async Task Disconnect(CancellationToken cancellationToken = default) => 
+    public async Task Disconnect(CancellationToken cancellationToken = default) =>
         await Quit(false, cancellationToken);
 
     /// <summary>
     /// Fully stop the Telepresence process and daemons.
     /// </summary>
     /// <param name="cancellationToken"></param>
-    public async Task Quit(CancellationToken cancellationToken = default) => 
+    public async Task Quit(CancellationToken cancellationToken = default) =>
         await Quit(true, cancellationToken);
 
     private async Task Quit(bool stopDaemons, CancellationToken cancellationToken = default)
@@ -147,7 +144,7 @@ public partial class Connection
 
             connectProcess.OutputDataReceived += (sender, args) =>
             {
-                if (!string.IsNullOrWhiteSpace(args.Data)) 
+                if (!string.IsNullOrWhiteSpace(args.Data))
                     _logger.Information(args.Data);
             };
 
@@ -161,7 +158,7 @@ public partial class Connection
 
             connectProcess.BeginOutputReadLine();
             connectProcess.BeginErrorReadLine();
-            
+
             await connectProcess.WaitForExitAsync(linkedTokenSource.Token);
 
             _connected = true;

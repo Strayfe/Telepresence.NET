@@ -4,21 +4,19 @@ namespace Telepresence.NET;
 
 public static class Constants
 {
-    // todo: make internal after testing
     public static class Defaults
     {
         /// <summary>
         /// A default name that can be used throughout convention-based creation of an intercept specification.
         /// </summary>
-        // todo: make internal after testing
-        public static readonly string NormalizedEntryAssembly = Assembly
-                                                                    .GetEntryAssembly()?
-                                                                    .GetName()
-                                                                    .Name?
-                                                                    .Replace('.', '-')
-                                                                    .Replace('_', '-')
-                                                                    .ToLowerInvariant() ?? 
-                                                                throw new InvalidOperationException(Exceptions.CantDetermineName);
+        internal static readonly string NormalizedEntryAssembly = Assembly
+                                                                      .GetEntryAssembly()?
+                                                                      .GetName()
+                                                                      .Name?
+                                                                      .Replace('.', '-')
+                                                                      .Replace('_', '-')
+                                                                      .ToLowerInvariant() ??
+                                                                  throw new InvalidOperationException(Exceptions.CantDetermineName);
 
         public static class Headers
         {
@@ -26,15 +24,15 @@ public static class Constants
             public const string TelepresenceInterceptId = "x-telepresence-caller-intercept-id";
         }
     }
-    
+
     public static class Environment
     {
         public const string TelepresenceInterceptAs = "TELEPRESENCE_INTERCEPT_AS";
         public const string TelepresenceInterceptId = "TELEPRESENCE_INTERCEPT_ID";
         public const string TelepresenceApiPort = "TELEPRESENCE_API_PORT";
     }
-    
-    public static class Exceptions
+
+    internal static class Exceptions
     {
         public const string AlphaNumericWithHyphens = "Value must consist of only letters, numbers and hyphens.";
         public const string AlphaNumericWithUnderscores = "Value must consist of only letters, numbers and underscores.";

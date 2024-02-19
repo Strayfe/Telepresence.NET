@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Serilog;
-using Telepresence.NET.Converters;
+using Telepresence.NET.InterceptSpec.Converters;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -32,7 +32,7 @@ internal class InterceptSpecification
         _logger = new LoggerConfiguration()
             .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}][telepresence] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
-        
+
         Name = name;
     }
 
@@ -51,17 +51,17 @@ internal class InterceptSpecification
         {
             if (string.IsNullOrWhiteSpace(value))
                 throw new ArgumentNullException(nameof(Name));
-    
+
             const string pattern = @"^[a-zA-Z][a-zA-Z0-9_-]*$|\{\{";
-            
+
             if (!Regex.IsMatch(value, pattern))
                 throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
-    
+
             _name = value;
         }
     }
     private string? _name;
-    
+
     /// <summary>
     /// Connection properties to use when Telepresence connects to the cluster.
     /// </summary>
@@ -71,7 +71,7 @@ internal class InterceptSpecification
         init => _connection = value ?? throw new ArgumentNullException(nameof(Connection));
     }
     private Connection? _connection;
-    
+
     /// <summary>
     /// Remote workloads that are intercepted, keyed by workload name.
     /// </summary>
@@ -85,15 +85,15 @@ internal class InterceptSpecification
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(Workloads));
-    
+
             if (!value.Any() || value.Count() > 32)
                 throw new InvalidOperationException(Constants.Exceptions.InvalidNumberOfWorkloadsDefined);
-    
+
             _workloads = value;
         }
     }
     private IEnumerable<Workload>? _workloads;
-    
+
     /// <summary>
     /// Local services running on the host machine that handle the intercepted services requests.
     /// </summary>
@@ -107,33 +107,33 @@ internal class InterceptSpecification
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(Handlers));
-    
+
             if (!value.Any() || value.Count() > 64)
                 throw new InvalidOperationException(Constants.Exceptions.InvalidNumberOfHandlersDefined);
-            
+
             // assert that each handler has at least one handler
             foreach (var handler in value)
             {
                 var isDocker = handler.Docker != null;
                 var isScript = handler.Script != null;
                 var isExternal = handler.External != null;
-    
+
                 var mutuallyExclusive = isDocker ^ isScript ^ isExternal;
-                
+
                 if (!mutuallyExclusive)
                     throw new InvalidOperationException(Constants.Exceptions.MutuallyExclusiveHandlers);
             }
-            
+
             _handlers = value;
         }
     }
     private IEnumerable<Handler>? _handlers;
-    
+
     /// <summary>
     /// Start an intercept based on an intercept specification.
     /// </summary>
     public async Task Run(CancellationToken cancellationToken = default)
-    { 
+    {
         // should we be opinionated and automatically connect and leave existing?
         await CreateInterceptSpecificationFile(cancellationToken);
 
@@ -162,7 +162,7 @@ internal class InterceptSpecification
                     CreateNoWindow = true,
                 }
             };
-            
+
             // known limitation: only works with first of collection for now
             var workload = Workloads.FirstOrDefault();
             if (workload == null)
@@ -177,13 +177,13 @@ internal class InterceptSpecification
                 throw new InvalidOperationException(Constants.Exceptions.NoHandlerFound);
 
             await handler.Handle(startProcess, linkedTokenSource.Token);
-            
+
             // explicitly set the port for Kestrel to listen on because this may have come back from the cluster
             // todo: account for tls
             // todo: find a more logical place for this if this is not it, maybe a strategy pattern for intercepts too?
             Environment.SetEnvironmentVariable("DOTNET_URLS", $"http://+:{intercept.LocalPort}");
             Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://+:{intercept.LocalPort}");
-            
+
             _logger.Information("Intercept started: {Name}", Name);
         }
         catch (Exception ex)
@@ -192,7 +192,7 @@ internal class InterceptSpecification
             throw;
         }
     }
-    
+
     /// <summary>
     /// Leave an intercept.
     /// </summary>
@@ -200,10 +200,10 @@ internal class InterceptSpecification
     {
         var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
-        
+
         var workload = Workloads.FirstOrDefault();
         var intercept = workload?.Intercepts?.FirstOrDefault();
-        
+
         _logger.Information("Attempting to leave previous intercept: {Name}", intercept?.Name ?? Name);
 
         try
@@ -260,7 +260,7 @@ internal class InterceptSpecification
             DestroyAssets();
         }
     }
-    
+
     /// <summary>
     /// Parse the intercept specification as YAML.
     /// Falls back to the name of the object in event of failure.
@@ -268,7 +268,7 @@ internal class InterceptSpecification
     public override string? ToString()
     {
         var result = base.ToString();
-    
+
         try
         {
             var serializer = new SerializerBuilder()
@@ -276,14 +276,14 @@ internal class InterceptSpecification
                 .WithTypeConverter(new YamlStringEnumConverter())
                 .WithNamingConvention(CamelCaseNamingConvention.Instance)
                 .Build();
-    
+
             result = serializer.Serialize(this);
         }
         catch (Exception)
         {
             // ignored
         }
-    
+
         return result;
     }
 
@@ -291,13 +291,13 @@ internal class InterceptSpecification
     {
         _temporaryDirectory = Path.Combine(Path.GetTempPath(), nameof(Telepresence).ToLowerInvariant(), Name);
         _interceptSpecificationPath = Path.Combine(_temporaryDirectory, $"{Name}-intercept-specification.yaml");
-        
+
         if (!Directory.Exists(_temporaryDirectory))
             Directory.CreateDirectory(_temporaryDirectory);
-        
+
         return File.WriteAllTextAsync(_interceptSpecificationPath, ToString(), cancellationToken);
     }
-    
+
     /// <summary>
     /// Clean up created resources.
     /// </summary>

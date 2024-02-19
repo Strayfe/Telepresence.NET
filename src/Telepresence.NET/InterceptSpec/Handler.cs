@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Telepresence.NET.InterceptSpec.Handlers;
-using Telepresence.NET.Models;
+using Telepresence.NET.InterceptSpec.Models;
 
 namespace Telepresence.NET.InterceptSpec;
 
@@ -67,7 +67,7 @@ internal class Handler
                 return;
 
             const string pattern = "^[a-zA-Z_][a-zA-Z0-9_]*$";
-            
+
             if (value.Any(environment => !Regex.IsMatch(environment.Name, pattern)))
                 throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithUnderscores);
 
@@ -99,8 +99,8 @@ internal class Handler
         {
             if (_handlerStrategy is External external)
                 return external;
-            
-            var externalHandler = new External 
+
+            var externalHandler = new External
             {
                 OutputFormat = OutputFormat.Json,
                 OutputPath = StandardOutput

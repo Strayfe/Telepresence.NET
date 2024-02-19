@@ -10,17 +10,17 @@ internal class External : IHandlerStrategy
 {
     private readonly IExternalHandlerStrategy? _externalHandlerStrategy;
     private readonly string? _outputPath;
-    
+
     /// <summary>
     /// True if the external runner is containerized.
     /// </summary>
     public bool? IsDocker { get; init; }
-    
+
     /// <summary>
     /// Format for the emitted info.
     /// </summary>
     public OutputFormat? OutputFormat { get; init; }
-    
+
     /// <summary>
     /// Path to the file that will receive the output.
     /// Can be stdout, stderr, or a file path.
@@ -31,7 +31,7 @@ internal class External : IHandlerStrategy
         {
             if (string.IsNullOrWhiteSpace(value))
                 return;
-            
+
             if (string.Equals("stdout", value, StringComparison.OrdinalIgnoreCase))
             {
                 _outputPath = value;
@@ -55,6 +55,6 @@ internal class External : IHandlerStrategy
         }
     }
 
-    public async Task Handle(Process process, CancellationToken cancellationToken = default) => 
+    public async Task Handle(Process process, CancellationToken cancellationToken = default) =>
         await _externalHandlerStrategy.Handle(process, cancellationToken);
 }

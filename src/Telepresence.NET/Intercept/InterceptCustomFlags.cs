@@ -1,7 +1,7 @@
 namespace Telepresence.NET.Intercept;
 
 /// <summary>
-/// Opinionated custom flags created by me to ease the flow of debugging .NET applications. 
+/// Opinionated custom flags created by me to ease the flow of debugging .NET applications.
 /// </summary>
 /// <remarks>
 /// These are non-standard and do not conform to the current Telepresence CLI.
@@ -9,7 +9,7 @@ namespace Telepresence.NET.Intercept;
 public partial class Intercept
 {
     // todo: environment injector strategy
-    
+
     /// <summary>
     /// Ask the library to automatically try injecting environment variables into the running process in the most secure
     /// way possible, i.e. not leaving a sensitive file on the filesystem.

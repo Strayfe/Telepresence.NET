@@ -25,7 +25,7 @@ public partial class Intercept
             }
 
             const string pattern = @"^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$|\{\{";
-            
+
             if (!Regex.IsMatch(value, pattern))
                 throw new InvalidOperationException(Constants.Exceptions.NotAnIpAddress);
 
@@ -59,7 +59,7 @@ public partial class Intercept
             }
 
             _dockerBuild = value;
-            
+
             var arguments = new[]
             {
                 "--docker-build",
@@ -520,7 +520,7 @@ public partial class Intercept
         }
     }
     private readonly int? _ingressPort;
-    
+
     /// <summary>
     /// Determines if TLS is used.
     /// </summary>
@@ -547,7 +547,7 @@ public partial class Intercept
         }
     }
     private readonly bool? _ingressTls;
-    
+
     /// <summary>
     /// Do not mount remote directories. Instead, expose this port on localhost to an external mounter
     /// </summary>
@@ -605,7 +605,7 @@ public partial class Intercept
         }
     }
     private readonly Mechanism? _mechanism;
-    
+
     /// <summary>
     /// The absolute path for the root directory where volumes will be mounted, $TELEPRESENCE_ROOT. Use "true" to have Telepresence
     /// pick a random mount point (default). Use "false" to disable filesystem mounting entirely. (default "true")
@@ -634,7 +634,7 @@ public partial class Intercept
         }
     }
     private readonly string? _mount;
-    
+
     /// <summary>
     /// Local port to forward to.
     /// If intercepting a service with multiple ports, use &lt;local port&gt;:&lt;svcPortIdentifier&gt;, where the
@@ -666,7 +666,7 @@ public partial class Intercept
         }
     }
     private readonly string? _port;
-    
+
     /// <summary>
     /// Generate an edgestack.me preview domain for this intercept. (default true)
     /// </summary>
@@ -693,7 +693,7 @@ public partial class Intercept
         }
     }
     private readonly bool? _previewUrl;
-    
+
     /// <summary>
     /// Additional headers in key1=value1,key2=value2 pairs injected in every preview page request (default [])
     /// </summary>
@@ -720,7 +720,7 @@ public partial class Intercept
                 .ToList();
 
             var headers = string.Join(',', pairs);
-            
+
             var arguments = new[]
             {
                 "--preview-url-add-request-headers",
@@ -731,7 +731,7 @@ public partial class Intercept
         }
     }
     private readonly IEnumerable<KeyValuePair<string, string>>? _previewUrlAddRequestHeaders;
-    
+
     /// <summary>
     /// Display banner on preview page (default true)
     /// </summary>
@@ -758,7 +758,7 @@ public partial class Intercept
         }
     }
     private readonly bool? _previewUrlBanner;
-    
+
     /// <summary>
     /// Whether to replace the running container entirely. If false, the app container will keep running.
     /// </summary>
@@ -785,7 +785,7 @@ public partial class Intercept
         }
     }
     private readonly bool? _replace;
-    
+
     /// <summary>
     /// Name of service to intercept. If not provided, we will try to auto-detect one
     /// </summary>
@@ -813,7 +813,7 @@ public partial class Intercept
         }
     }
     private readonly string? _service;
-    
+
     /// <summary>
     /// An additional port to forward from the intercepted pod, will be made available at localhost:PORT Use this to,
     /// for example, access proxy/helper sidecars in the intercepted pod.
@@ -848,7 +848,7 @@ public partial class Intercept
         }
     }
     private readonly IEnumerable<string>? _toPod;
-    
+
     /// <summary>
     /// Use a saved intercept.
     /// </summary>
@@ -876,7 +876,7 @@ public partial class Intercept
         }
     }
     private readonly string? _useSavedIntercept;
-    
+
     /// <summary>
     /// Name of workload (Deployment, ReplicaSet) to intercept, if different from &lt;name&gt;
     /// </summary>
@@ -904,7 +904,7 @@ public partial class Intercept
         }
     }
     private readonly string? _workload;
-    
+
     // todo: move to a global mechanism??
     /// <summary>
     /// Match expression that uniquely identified the daemon container.

@@ -14,7 +14,7 @@ into the application.
 
 ## Features
 
-- Leverages Telepresence's capabilites for connecting to and controlling different services in a development cluster.
+- Leverages Telepresence's capabilities for connecting to and controlling different services in a development cluster.
 - Abstracts the complexity of dealing with CLI commands and APIs, giving you a clean implementation to work with.
 - Handles lifecycle management of connections, ensuring smooth and consistent operations.
 - Facilitates productive debugging and development workflow.

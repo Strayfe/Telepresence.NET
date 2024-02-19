@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Telepresence.NET" Version="0.2.3-beta" />
+      <PackageReference Include="Telepresence.NET" Version="0.3.1-beta" />
     </ItemGroup>
 
 </Project>

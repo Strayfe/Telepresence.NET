@@ -28,7 +28,7 @@ internal class Script : IHandlerStrategy
     }
 
     public Shell? Shell { get; init; }
-    
+
     public async Task Handle(Process process, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();

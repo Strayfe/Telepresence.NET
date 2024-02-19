@@ -45,12 +45,12 @@ public partial class Intercept
         {
             if (string.IsNullOrWhiteSpace(value))
                 throw new ArgumentNullException(nameof(Name));
-    
+
             const string pattern = @"^[a-zA-Z][a-zA-Z0-9_-]*$|\{\{";
-            
+
             if (!Regex.IsMatch(value, pattern))
                 throw new InvalidOperationException(Constants.Exceptions.AlphaNumericWithHyphens);
-    
+
             _name = value;
         }
     }
@@ -61,12 +61,9 @@ public partial class Intercept
     /// </summary>
     public async Task Start(CancellationToken cancellationToken = default)
     {
-        var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
-
         // we need to try leaving so that we can get a new env file
-        if (InjectEnvironment is true) 
-            await Leave(linkedTokenSource.Token);
+        if (InjectEnvironment is true)
+            await Leave(cancellationToken);
 
         _logger.Information("Attempting to start intercept");
 
@@ -89,7 +86,7 @@ public partial class Intercept
                     CreateNoWindow = true,
                 }
             };
-            
+
             foreach (var argument in _arguments.Values.SelectMany(argument => argument))
                 startProcess.StartInfo.ArgumentList.Add(argument);
 
@@ -97,7 +94,7 @@ public partial class Intercept
 
             startProcess.OutputDataReceived += (sender, args) =>
             {
-                if (!string.IsNullOrWhiteSpace(args.Data)) 
+                if (!string.IsNullOrWhiteSpace(args.Data))
                     _logger.Information(args.Data);
             };
 
@@ -112,7 +109,7 @@ public partial class Intercept
             startProcess.BeginOutputReadLine();
             startProcess.BeginErrorReadLine();
 
-            await startProcess.WaitForExitAsync(linkedTokenSource.Token);
+            await startProcess.WaitForExitAsync(cancellationToken);
 
             if (InjectEnvironment is true)
             {
@@ -122,12 +119,12 @@ public partial class Intercept
                 if (!string.IsNullOrWhiteSpace(EnvFile))
                 {
                     _logger.Information("Waiting for file to become ready");
-                    await WaitForOutputFile(EnvFile, linkedTokenSource.Token);
+                    await WaitForOutputFile(EnvFile, cancellationToken);
 
                     if (!File.Exists(EnvFile))
                         throw new InvalidOperationException(Constants.Exceptions.UnableToStartIntercept);
 
-                    await EnvironmentLoader.LoadEnvironmentFromFile(EnvFile, linkedTokenSource.Token);
+                    await EnvironmentLoader.LoadEnvironmentFromFile(EnvFile, cancellationToken);
 
                     // apply manual overrides
                     if (IncludeEnvironment != null && Enumerable.Any<KeyValuePair<string, string>>(IncludeEnvironment))
@@ -152,12 +149,12 @@ public partial class Intercept
                 else if (!string.IsNullOrWhiteSpace(EnvJson))
                 {
                     _logger.Information("Waiting for file to become ready");
-                    await WaitForOutputFile(EnvJson, linkedTokenSource.Token);
+                    await WaitForOutputFile(EnvJson, cancellationToken);
 
                     if (!File.Exists(EnvJson))
                         throw new InvalidOperationException(Constants.Exceptions.UnableToStartIntercept);
 
-                    await EnvironmentLoader.LoadEnvironmentFromFile(EnvJson, linkedTokenSource.Token);
+                    await EnvironmentLoader.LoadEnvironmentFromFile(EnvJson, cancellationToken);
 
                     // apply manual overrides
                     if (IncludeEnvironment != null && Enumerable.Any<KeyValuePair<string, string>>(IncludeEnvironment))
@@ -174,7 +171,7 @@ public partial class Intercept
                     }
 
                     _logger.Information("Environment loaded");
-                    
+
                     // todo: handle strange issue on Windows where the output file is locked by the telepresence.exe
                     //       for about 90 seconds so it cannot be deleted, maybe we need to use a file watcher that
                     //       deletes it as soon as it unlocks
@@ -194,9 +191,6 @@ public partial class Intercept
     /// </summary>
     public async Task Leave(CancellationToken cancellationToken = default)
     {
-        var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        linkedTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
-
         _logger.Information("Attempting to leave intercept");
 
         try
@@ -230,7 +224,7 @@ public partial class Intercept
 
             leaveProcess.OutputDataReceived += (sender, args) =>
             {
-                if (!string.IsNullOrWhiteSpace(args.Data)) 
+                if (!string.IsNullOrWhiteSpace(args.Data))
                     _logger.Information(args.Data);
             };
 
@@ -245,7 +239,7 @@ public partial class Intercept
             leaveProcess.BeginOutputReadLine();
             leaveProcess.BeginErrorReadLine();
 
-            await leaveProcess.WaitForExitAsync(linkedTokenSource.Token);
+            await leaveProcess.WaitForExitAsync(cancellationToken);
         }
         catch (Exception ex)
         {

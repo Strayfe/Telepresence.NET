@@ -11,9 +11,9 @@ public static class EnvironmentLoader
     {
         if (!File.Exists(filePath))
             return;
-        
+
         var extension = Path.GetExtension(filePath);
-        
+
         var processors = new Dictionary<string, Func<string, CancellationToken, Task>>(StringComparer.OrdinalIgnoreCase)
         {
             [".json"] = ProcessJson,
@@ -21,11 +21,11 @@ public static class EnvironmentLoader
             [".yaml"] = ProcessYaml,
             [".env"] = ProcessDotEnv,
         };
-        
-        if (processors.TryGetValue(extension, out var processor)) 
+
+        if (processors.TryGetValue(extension, out var processor))
             await processor(filePath, cancellationToken);
     }
-    
+
     public static Task SetEnvironmentVariables(IEnumerable<KeyValuePair<string,string>> variables)
     {
         foreach (var variable in variables)
@@ -37,7 +37,7 @@ public static class EnvironmentLoader
     private static async Task ProcessJson(string filePath, CancellationToken cancellationToken = default)
     {
         await WaitForRead(filePath, cancellationToken);
-        
+
         var json = await File.ReadAllTextAsync(filePath, cancellationToken);
         var environment = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
 
@@ -56,14 +56,14 @@ public static class EnvironmentLoader
     private static Task ProcessDotEnv(string filePath, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
-        
+
         foreach (var line in File.ReadAllLines(filePath))
         {
             var parts = line.Split('=', StringSplitOptions.RemoveEmptyEntries);
-    
+
             if (parts.Length != 2)
                 continue;
-    
+
             Environment.SetEnvironmentVariable(parts[0], parts[1]);
         }
 
@@ -82,7 +82,7 @@ public static class EnvironmentLoader
             catch (IOException)
             {
                 // loop until file becomes readable with sharable lock or times out
-            } 
+            }
         }
     }
 }

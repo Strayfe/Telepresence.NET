@@ -64,7 +64,7 @@ public partial class Connection
         }
     }
     private readonly IEnumerable<string>? _asGroups;
-    
+
     /// <summary>
     /// UID to impersonate for the operation.
     /// </summary>
@@ -93,7 +93,7 @@ public partial class Connection
         }
     }
     private readonly string? _asUid;
-    
+
     /// <summary>
     /// Default cache directory
     /// </summary>
@@ -121,7 +121,7 @@ public partial class Connection
         }
     }
     private readonly string? _cacheDirectory;
-        
+
     /// <summary>
     /// Path to a cert file for the certificate authority.
     /// </summary>
@@ -149,7 +149,7 @@ public partial class Connection
         }
     }
     private readonly string? _certificateAuthority;
-    
+
     /// <summary>
     /// Path to a client certificate file for TLS.
     /// </summary>
@@ -177,7 +177,7 @@ public partial class Connection
         }
     }
     private readonly string? _clientCertificate;
-    
+
     /// <summary>
     /// Path to a client key file for TLS.
     /// </summary>
@@ -205,7 +205,7 @@ public partial class Connection
         }
     }
     private readonly string? _clientKey;
-        
+
     /// <summary>
     /// The name of the kubeconfig cluster to use.
     /// </summary>
@@ -232,9 +232,9 @@ public partial class Connection
 
             _arguments[nameof(Cluster)] = arguments;
         }
-    } 
+    }
     private readonly string? _cluster;
-        
+
     /// <summary>
     /// The name of the kubeconfig context to use. Defaults to the current context of the kubeconfig.
     /// </summary>
@@ -258,7 +258,7 @@ public partial class Connection
         }
     }
     private string? _context;
-        
+
     /// <summary>
     /// If true, opt-out of response compression for all requests to the server.
     /// </summary>
@@ -285,7 +285,7 @@ public partial class Connection
         }
     }
     private readonly bool? _disableCompression;
-        
+
     /// <summary>
     /// If true, the server's certificate will not be checked for validity.
     /// This will make your HTTPS connections insecure.
@@ -313,7 +313,7 @@ public partial class Connection
         }
     }
     private readonly bool? _insecureSkipTlsVerify;
-        
+
     /// <summary>
     /// Path to the kubeconfig file to use for CLI requests.
     /// </summary>
@@ -341,7 +341,7 @@ public partial class Connection
         }
     }
     private readonly string? _kubeConfig;
-        
+
     /// <summary>
     /// The length of time to wait before giving up on a single server request.
     /// Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h).
@@ -366,12 +366,12 @@ public partial class Connection
                 "--request-timeout",
                 value
             };
-            
+
             _arguments[nameof(RequestTimeout)] = arguments;
         }
     }
     private readonly string? _requestTimeout;
-        
+
     /// <summary>
     /// The address and port of the Kubernetes API server.
     /// </summary>
@@ -394,12 +394,12 @@ public partial class Connection
                 "--server",
                 value
             };
-            
+
             _arguments[nameof(Server)] = arguments;
         }
     }
     private readonly string? _server;
-        
+
     /// <summary>
     /// Server name to use for server certificate validation.
     /// If it is not provided, the hostname used to contact the server is used.
@@ -423,12 +423,12 @@ public partial class Connection
                 "--tls-server-name",
                 value
             };
-            
+
             _arguments[nameof(TlsServerName)] = arguments;
         }
     }
     private readonly string? _tlsServerName;
-        
+
     /// <summary>
     /// Bearer token for authentication to the API server.
     /// </summary>
@@ -451,12 +451,12 @@ public partial class Connection
                 "--token",
                 value
             };
-            
+
             _arguments[nameof(Token)] = arguments;
         }
     }
     private readonly string? _token;
-        
+
     /// <summary>
     /// The name of the kubeconfig user to use.
     /// </summary>
@@ -479,7 +479,7 @@ public partial class Connection
                 "--user",
                 value
             };
-            
+
             _arguments[nameof(User)] = arguments;
         }
     }

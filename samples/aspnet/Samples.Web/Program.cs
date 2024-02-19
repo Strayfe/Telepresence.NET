@@ -1,26 +1,27 @@
-using Microsoft.AspNetCore.Mvc;
+using Samples.Web;
 using Telepresence.NET;
 using Telepresence.NET.Connection;
-using Telepresence.NET.Extensions;
+using Telepresence.NET.DependencyInjection;
+using Telepresence.NET.HeaderPropagation.Mvc.DelegatingHandlers;
+using Telepresence.NET.HeaderPropagation.Mvc.Filters;
 using Telepresence.NET.Intercept;
-using Telepresence.NET.Services;
 
 // create a connection to the cluster
 var connection = new Connection("debug")
 {
-    Context = "minikube",
-    Namespace = "emojivoto",
+    Context = "Dev_AKS",
+    Namespace = "bluemountain",
 };
 
 // run the connection
 await connection.Connect();
 
 // create an intercept
-var intercept = new Intercept("web")
+var intercept = new Intercept("identity-api")
 {
     Use = "debug",
-    Workload = "web",
-    Service = "web-svc",
+    Workload = "identity-api",
+    Service = "identity-api",
     HttpHeader = new[]
     {
         new KeyValuePair<string, string>
@@ -29,14 +30,15 @@ var intercept = new Intercept("web")
             Environment.UserName
         )
     },
-    EnvJson = "env.json",
     InjectEnvironment = true,
-    Port = "6000",
+    EnvJson = "env.json",
+    Port = "7000",
     IncludeEnvironment = new Dictionary<string, string>
     {
-        { "DOTNET_URLS", "http://+:6000" },
-        { "ASPNETCORE_URLS", "http://+:6000" },
-    }
+        { "DOTNET_URLS", "http://+:7000" },
+        { "ASPNETCORE_URLS", "http://+:7000" },
+    },
+    PreviewUrl = false
 };
 
 // start the intercept
@@ -47,37 +49,31 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    builder.Services.AddTelepresence()
-        .WithRequestForwarding()
+    // register DI container services as required
+    builder.Services
+        .AddTelepresence()
+        .WithHttpRequestForwarding()
         .WithRestfulApi();
 
-    var app = builder.Build();
+    // this grabs the headers from the HttpContext for propagation
+    builder.Services
+        .AddControllers(x => x.Filters.Add<TelepresenceActionFilter>());
 
-    app.MapGet("/", async ([FromServices] ITelepresenceApiService apiService) =>
-    {
-        var interceptHeaders = new Dictionary<string, string>
-        {
-            {
-                Constants.Defaults.Headers.TelepresenceInterceptAs,
-                Environment.UserName
-            }
-        };
+    // this is a way of creating a named http client that propagates previously captured headers
+    builder.Services
+        .AddHttpClient(nameof(ExampleService))
+        .AddHttpMessageHandler<TelepresenceDelegatingHandler>();
 
-        var healthy = await apiService.Healthz();
-        var consumeHere = await apiService.ConsumeHere(interceptHeaders);
-        var interceptInfo = await apiService.InterceptInfo();
+    // this is a way of creating a typed http client that propagates previously captured headers
+    builder.Services
+        .AddHttpClient<ExampleService>()
+        .AddHttpMessageHandler<TelepresenceDelegatingHandler>();
 
-        var response = new
-        {
-            healthy,
-            consumeHere,
-            interceptInfo
-        };
-        
-        return response;
-    });
+    var application = builder.Build();
 
-    app.Run();
+    application.MapControllers();
+
+    application.Run();
 }
 catch
 {
